@@ -60,21 +60,38 @@ impl<'a, T: Debug> Debug for ParseResult<'a, T> {
     }
 }
 
-fn term_p<'i, 't>(input: &'i [u8], term: &'t [u8]) -> ParseResult<'i, &'t [u8]> {
-    if input.starts_with(term) {
-        ParseResult::Found {
-            subject: term,
-            rest: &input[term.len()..],
+trait Parser<'i, Out> {
+    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Out>;
+}
+
+struct TermParser<'t> {
+    term: &'t [u8],
+}
+
+impl<'t> TermParser<'t> {
+    fn new(term: &'t [u8]) -> Self {
+        Self { term }
+    }
+}
+
+impl<'i, 't> Parser<'i, &'t [u8]> for TermParser<'t> {
+    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, &'t [u8]> {
+        if input.starts_with(self.term) {
+            ParseResult::Found {
+                subject: self.term,
+                rest: &input[self.term.len()..],
+            }
+        } else {
+            ParseResult::Missed { rest: input }
         }
-    } else {
-        ParseResult::Missed { rest: input }
     }
 }
 
 fn main() -> std::io::Result<()> {
     // tcp()?;
 
-    let outcome = term_p(b"hello world", b"hello");
+    let hello_p = TermParser::new(b"hello");
+    let outcome = hello_p.parse(b"hello world!");
 
     println!("We got: {:?}", outcome);
 
