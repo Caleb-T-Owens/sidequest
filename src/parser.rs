@@ -137,15 +137,21 @@ impl<Out> Parser<Vec<Out>> for SpanParser<Out> {
 
         loop {
             match self.0.parse(rest) {
-                ParseResult::Found { subject, rest: new_rest } => {
+                ParseResult::Found {
+                    subject,
+                    rest: new_rest,
+                } => {
                     result.push(subject);
                     rest = new_rest;
-                },
-                ParseResult::Missed { .. } => break
+                }
+                ParseResult::Missed { .. } => break,
             }
         }
 
-        ParseResult::Found { subject: result, rest }
+        ParseResult::Found {
+            subject: result,
+            rest,
+        }
     }
 }
 
