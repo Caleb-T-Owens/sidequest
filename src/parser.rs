@@ -1,3 +1,4 @@
+use crate::either::Either;
 use std::fmt::Debug;
 
 #[derive(PartialEq, Eq)]
@@ -46,6 +47,7 @@ impl<'i, T: Debug> Debug for ParseResult<'i, T> {
 pub(crate) trait Parser<'i, Out> {
     fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Out>;
 
+    #[allow(unused)]
     fn inspect(self: Self) -> InspectParser<'i, Out>
     where
         Self: Sized + 'static,
@@ -53,6 +55,7 @@ pub(crate) trait Parser<'i, Out> {
         InspectParser(Box::new(self))
     }
 
+    #[allow(unused)]
     fn map<U, F>(self: Self, op: F) -> MapParser<'i, Out, U, F>
     where
         F: FnOnce(Out) -> U + Clone + Copy,
@@ -63,8 +66,38 @@ pub(crate) trait Parser<'i, Out> {
             op,
         }
     }
+
+    #[allow(unused)]
+    fn or<OutB, B>(self: Self, b: B) -> OrParser<'i, Out, OutB>
+    where
+        B: Parser<'i, OutB> + 'static,
+        Self: Sized + 'static,
+    {
+        OrParser {
+            a: Box::new(self),
+            b: Box::new(b),
+        }
+    }
 }
 
+pub(crate) struct OrParser<'i, OutA, OutB> {
+    a: Box<dyn Parser<'i, OutA>>,
+    b: Box<dyn Parser<'i, OutB>>,
+}
+
+impl<'i, OutA, OutB> Parser<'i, Either<OutA, OutB>> for OrParser<'i, OutA, OutB> {
+    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Either<OutA, OutB>> {
+        match self.a.parse(input) {
+            ParseResult::Found { subject, rest } => ParseResult::Found {
+                subject: Either::Left(subject),
+                rest,
+            },
+            ParseResult::Missed { .. } => self.b.parse(input).map(Either::Right),
+        }
+    }
+}
+
+#[allow(unused)]
 pub(crate) struct MapParser<'i, Out, U, F: FnOnce(Out) -> U> {
     parser: Box<dyn Parser<'i, Out>>,
     op: F,
@@ -76,6 +109,7 @@ impl<'i, Out, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<'i, U> for MapParser
     }
 }
 
+#[allow(unused)]
 pub(crate) struct InspectParser<'i, Out>(Box<dyn Parser<'i, Out>>);
 
 impl<'i, Out: Debug> Parser<'i, Out> for InspectParser<'i, Out> {
@@ -84,6 +118,7 @@ impl<'i, Out: Debug> Parser<'i, Out> for InspectParser<'i, Out> {
     }
 }
 
+#[allow(unused)]
 pub(crate) struct TermParser<'t> {
     term: &'t [u8],
 }

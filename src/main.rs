@@ -1,11 +1,10 @@
 use std::io::{BufRead as _, BufReader};
 use std::net::TcpListener;
 
-mod parser;
 mod either;
+mod parser;
 
 use crate::parser::{Parser as _, TermParser};
-use crate::either::Either;
 
 #[allow(unused)]
 fn tcp() -> std::io::Result<()> {
@@ -40,14 +39,10 @@ fn tcp() -> std::io::Result<()> {
 fn main() -> std::io::Result<()> {
     // tcp()?;
 
-    let hello_p = TermParser::new(b"hello")
-        .inspect()
-        .map(|term| term.to_ascii_uppercase());
-    let outcome = hello_p.parse(b"hello world!");
-
-    dbg!(Either::Left::<&str, &str>("hi"));
-
-    println!("We got: {:?}", outcome);
+    let parser = TermParser::new(b"hello").or(TermParser::new(b"stuff"));
+    dbg!(parser.parse(b"hello world!"));
+    dbg!(parser.parse(b"stuff and things"));
+    dbg!(parser.parse(b"things and stuff"));
 
     Ok(())
 }
