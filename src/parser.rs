@@ -225,3 +225,30 @@ impl<'t> Parser<&'t [u8]> for TermParser<'t> {
         }
     }
 }
+
+#[allow(unused)]
+pub(crate) struct MatchParser<F: Fn(u8) -> bool> {
+    matcher: F,
+}
+
+impl<F: Fn(u8) -> bool> MatchParser<F> {
+    #[allow(unused)]
+    pub(crate) fn new(matcher: F) -> Self {
+        Self { matcher }
+    }
+}
+
+impl<F: Fn(u8) -> bool> Parser<u8> for MatchParser<F> {
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, u8> {
+        if let Some(a) = input.first()
+            && (self.matcher)(*a)
+        {
+            ParseResult::Found {
+                subject: *a,
+                rest: &input[1..],
+            }
+        } else {
+            ParseResult::Missed { rest: input }
+        }
+    }
+}
