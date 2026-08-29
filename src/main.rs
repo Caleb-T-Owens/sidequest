@@ -33,12 +33,12 @@ fn tcp() -> std::io::Result<()> {
 }
 
 #[derive(PartialEq, Eq)]
-enum ParseResult<'a, T> {
-    Found { subject: T, rest: &'a [u8] },
-    Missed { rest: &'a [u8] },
+enum ParseResult<'i, T> {
+    Found { subject: T, rest: &'i [u8] },
+    Missed { rest: &'i [u8] },
 }
 
-impl<'a, T: Debug> Debug for ParseResult<'a, T> {
+impl<'i, T: Debug> Debug for ParseResult<'i, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Found { subject, rest } => f
