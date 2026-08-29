@@ -46,39 +46,39 @@ impl<'i, T: Debug> Debug for ParseResult<'i, T> {
 pub(crate) trait Parser<'i, Out> {
     fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Out>;
 
-    fn inspect(self: Self) -> InspectorParser<'i, Out>
+    fn inspect(self: Self) -> InspectParser<'i, Out>
     where
         Self: Sized + 'static,
     {
-        InspectorParser(Box::new(self))
+        InspectParser(Box::new(self))
     }
 
-    fn map<U, F>(self: Self, op: F) -> MappedParser<'i, Out, U, F>
+    fn map<U, F>(self: Self, op: F) -> MapParser<'i, Out, U, F>
     where
         F: FnOnce(Out) -> U + Clone + Copy,
         Self: Sized + 'static,
     {
-        MappedParser {
+        MapParser {
             parser: Box::new(self),
             op,
         }
     }
 }
 
-pub(crate) struct MappedParser<'i, Out, U, F: FnOnce(Out) -> U> {
+pub(crate) struct MapParser<'i, Out, U, F: FnOnce(Out) -> U> {
     parser: Box<dyn Parser<'i, Out>>,
     op: F,
 }
 
-impl<'i, Out, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<'i, U> for MappedParser<'i, Out, U, F> {
+impl<'i, Out, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<'i, U> for MapParser<'i, Out, U, F> {
     fn parse(&self, input: &'i [u8]) -> ParseResult<'i, U> {
         self.parser.parse(input).map(self.op)
     }
 }
 
-pub(crate) struct InspectorParser<'i, Out>(Box<dyn Parser<'i, Out>>);
+pub(crate) struct InspectParser<'i, Out>(Box<dyn Parser<'i, Out>>);
 
-impl<'i, Out: Debug> Parser<'i, Out> for InspectorParser<'i, Out> {
+impl<'i, Out: Debug> Parser<'i, Out> for InspectParser<'i, Out> {
     fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Out> {
         dbg!(self.0.parse(input))
     }
