@@ -70,11 +70,11 @@ impl<'i, T: Debug> Debug for ParseResult<'i, T> {
     }
 }
 
-pub(crate) trait Parser<'i, Out> {
-    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Out>;
+pub(crate) trait Parser<Out> {
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Out>;
 
     #[allow(unused)]
-    fn inspect(self: Self) -> InspectParser<'i, Out>
+    fn inspect(self: Self) -> InspectParser<Out>
     where
         Self: Sized + 'static,
     {
@@ -82,7 +82,7 @@ pub(crate) trait Parser<'i, Out> {
     }
 
     #[allow(unused)]
-    fn map<U, F>(self: Self, op: F) -> MapParser<'i, Out, U, F>
+    fn map<U, F>(self: Self, op: F) -> MapParser<Out, U, F>
     where
         F: FnOnce(Out) -> U + Clone + Copy,
         Self: Sized + 'static,
@@ -94,9 +94,9 @@ pub(crate) trait Parser<'i, Out> {
     }
 
     #[allow(unused)]
-    fn or<OutB, B>(self: Self, b: B) -> OrParser<'i, Out, OutB>
+    fn or<OutB, B>(self: Self, b: B) -> OrParser<Out, OutB>
     where
-        B: Parser<'i, OutB> + 'static,
+        B: Parser<OutB> + 'static,
         Self: Sized + 'static,
     {
         OrParser {
@@ -106,9 +106,9 @@ pub(crate) trait Parser<'i, Out> {
     }
 
     #[allow(unused)]
-    fn and<OutB, B>(self: Self, b: B) -> AndParser<'i, Out, OutB>
+    fn and<OutB, B>(self: Self, b: B) -> AndParser<Out, OutB>
     where
-        B: Parser<'i, OutB> + 'static,
+        B: Parser<OutB> + 'static,
         Self: Sized + 'static,
     {
         AndParser {
@@ -118,7 +118,7 @@ pub(crate) trait Parser<'i, Out> {
     }
 
     #[allow(unused)]
-    fn span(self: Self) -> SpanParser<'i, Out>
+    fn span(self: Self) -> SpanParser<Out>
     where
         Self: Sized + 'static,
     {
@@ -128,10 +128,10 @@ pub(crate) trait Parser<'i, Out> {
 
 
 #[allow(unused)]
-pub(crate) struct SpanParser<'i, Out>(Box<dyn Parser<'i, Out>>);
+pub(crate) struct SpanParser<Out>(Box<dyn Parser<Out>>);
 
-impl<'i, Out> Parser<'i, Vec<Out>> for SpanParser<'i, Out> {
-    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Vec<Out>> {
+impl<Out> Parser<Vec<Out>> for SpanParser<Out> {
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Vec<Out>> {
         let mut result = vec![];
         let mut rest = input;
 
@@ -150,13 +150,13 @@ impl<'i, Out> Parser<'i, Vec<Out>> for SpanParser<'i, Out> {
 }
 
 #[allow(unused)]
-pub(crate) struct AndParser<'i, OutA, OutB> {
-    a: Box<dyn Parser<'i, OutA>>,
-    b: Box<dyn Parser<'i, OutB>>,
+pub(crate) struct AndParser<OutA, OutB> {
+    a: Box<dyn Parser<OutA>>,
+    b: Box<dyn Parser<OutB>>,
 }
 
-impl<'i, OutA, OutB> Parser<'i, (OutA, OutB)> for AndParser<'i, OutA, OutB> {
-    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, (OutA, OutB)> {
+impl<OutA, OutB> Parser<(OutA, OutB)> for AndParser<OutA, OutB> {
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, (OutA, OutB)> {
         self.a
             .parse(input)
             .then(|a, a_rest| self.b.parse(a_rest).map(|b| (a, b)))
@@ -164,34 +164,34 @@ impl<'i, OutA, OutB> Parser<'i, (OutA, OutB)> for AndParser<'i, OutA, OutB> {
 }
 
 #[allow(unused)]
-pub(crate) struct OrParser<'i, OutA, OutB> {
-    a: Box<dyn Parser<'i, OutA>>,
-    b: Box<dyn Parser<'i, OutB>>,
+pub(crate) struct OrParser<OutA, OutB> {
+    a: Box<dyn Parser<OutA>>,
+    b: Box<dyn Parser<OutB>>,
 }
 
-impl<'i, OutA, OutB> Parser<'i, Either<OutA, OutB>> for OrParser<'i, OutA, OutB> {
-    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Either<OutA, OutB>> {
+impl<OutA, OutB> Parser<Either<OutA, OutB>> for OrParser<OutA, OutB> {
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Either<OutA, OutB>> {
         self.a.parse(input).or_else(|| self.b.parse(input))
     }
 }
 
 #[allow(unused)]
-pub(crate) struct MapParser<'i, Out, U, F: FnOnce(Out) -> U> {
-    parser: Box<dyn Parser<'i, Out>>,
+pub(crate) struct MapParser<Out, U, F: FnOnce(Out) -> U> {
+    parser: Box<dyn Parser<Out>>,
     op: F,
 }
 
-impl<'i, Out, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<'i, U> for MapParser<'i, Out, U, F> {
-    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, U> {
+impl<Out, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<U> for MapParser<Out, U, F> {
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, U> {
         self.parser.parse(input).map(self.op)
     }
 }
 
 #[allow(unused)]
-pub(crate) struct InspectParser<'i, Out>(Box<dyn Parser<'i, Out>>);
+pub(crate) struct InspectParser<Out>(Box<dyn Parser<Out>>);
 
-impl<'i, Out: Debug> Parser<'i, Out> for InspectParser<'i, Out> {
-    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Out> {
+impl<Out: Debug> Parser<Out> for InspectParser<Out> {
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Out> {
         dbg!(self.0.parse(input))
     }
 }
@@ -207,8 +207,8 @@ impl<'t> TermParser<'t> {
     }
 }
 
-impl<'i, 't> Parser<'i, &'t [u8]> for TermParser<'t> {
-    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, &'t [u8]> {
+impl<'t> Parser<&'t [u8]> for TermParser<'t> {
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, &'t [u8]> {
         if input.starts_with(self.term) {
             ParseResult::Found {
                 subject: self.term,
