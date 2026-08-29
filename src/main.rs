@@ -62,6 +62,21 @@ impl<'a, T: Debug> Debug for ParseResult<'a, T> {
 
 trait Parser<'i, Out> {
     fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Out>;
+
+    fn inspect(self: Self) -> InspectorParser<'i, Out>
+    where
+        Self: Sized + 'static,
+    {
+        InspectorParser(Box::new(self))
+    }
+}
+
+struct InspectorParser<'i, Out>(Box<dyn Parser<'i, Out>>);
+
+impl<'i, Out: Debug> Parser<'i, Out> for InspectorParser<'i, Out> {
+    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Out> {
+        dbg!(self.0.parse(input))
+    }
 }
 
 struct TermParser<'t> {
@@ -90,7 +105,7 @@ impl<'i, 't> Parser<'i, &'t [u8]> for TermParser<'t> {
 fn main() -> std::io::Result<()> {
     // tcp()?;
 
-    let hello_p = TermParser::new(b"hello");
+    let hello_p = TermParser::new(b"hello").inspect();
     let outcome = hello_p.parse(b"hello world!");
 
     println!("We got: {:?}", outcome);
