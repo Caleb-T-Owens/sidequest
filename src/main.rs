@@ -38,6 +38,21 @@ enum ParseResult<'i, T> {
     Missed { rest: &'i [u8] },
 }
 
+impl<'i, T> ParseResult<'i, T> {
+    fn map<U, F>(self, op: F) -> ParseResult<'i, U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        match self {
+            Self::Found { subject, rest } => ParseResult::Found {
+                subject: op(subject),
+                rest,
+            },
+            Self::Missed { rest } => ParseResult::Missed { rest },
+        }
+    }
+}
+
 impl<'i, T: Debug> Debug for ParseResult<'i, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -108,7 +123,7 @@ fn main() -> std::io::Result<()> {
     let hello_p = TermParser::new(b"hello").inspect();
     let outcome = hello_p.parse(b"hello world!");
 
-    println!("We got: {:?}", outcome);
+    println!("We got: {:?}", outcome.map(|_| "Something else!"));
 
     Ok(())
 }
