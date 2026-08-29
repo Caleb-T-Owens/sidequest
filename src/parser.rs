@@ -23,6 +23,17 @@ impl<'i, T> ParseResult<'i, T> {
     }
 
     #[allow(unused)]
+    fn then<U, F>(self, op: F) -> ParseResult<'i, U>
+    where
+        F: FnOnce(T, &'i [u8]) -> ParseResult<'i, U>,
+    {
+        match self {
+            Self::Found { subject, rest } => op(subject, rest),
+            Self::Missed { rest } => ParseResult::Missed { rest },
+        }
+    }
+
+    #[allow(unused)]
     fn or_else<U, F>(self, op: F) -> ParseResult<'i, Either<T, U>>
     where
         F: FnOnce() -> ParseResult<'i, U>,
@@ -115,22 +126,9 @@ pub(crate) struct AndParser<'i, OutA, OutB> {
 
 impl<'i, OutA, OutB> Parser<'i, (OutA, OutB)> for AndParser<'i, OutA, OutB> {
     fn parse(&self, input: &'i [u8]) -> ParseResult<'i, (OutA, OutB)> {
-        match self.a.parse(input) {
-            ParseResult::Found {
-                subject: a,
-                rest: a_rest,
-            } => match self.b.parse(a_rest) {
-                ParseResult::Found {
-                    subject: b,
-                    rest: b_rest,
-                } => ParseResult::Found {
-                    subject: (a, b),
-                    rest: b_rest,
-                },
-                ParseResult::Missed { rest } => ParseResult::Missed { rest },
-            },
-            ParseResult::Missed { rest } => ParseResult::Missed { rest },
-        }
+        self.a
+            .parse(input)
+            .then(|a, a_rest| self.b.parse(a_rest).map(|b| (a, b)))
     }
 }
 
