@@ -21,6 +21,20 @@ impl<'i, T> ParseResult<'i, T> {
             Self::Missed { rest } => ParseResult::Missed { rest },
         }
     }
+
+    #[allow(unused)]
+    fn or_else<U, F>(self, op: F) -> ParseResult<'i, Either<T, U>>
+    where
+        F: FnOnce() -> ParseResult<'i, U>,
+    {
+        match self {
+            Self::Found { subject, rest } => ParseResult::Found {
+                subject: Either::Left(subject),
+                rest,
+            },
+            Self::Missed { .. } => op().map(Either::Right),
+        }
+    }
 }
 
 impl<'i, T: Debug> Debug for ParseResult<'i, T> {
@@ -128,13 +142,7 @@ pub(crate) struct OrParser<'i, OutA, OutB> {
 
 impl<'i, OutA, OutB> Parser<'i, Either<OutA, OutB>> for OrParser<'i, OutA, OutB> {
     fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Either<OutA, OutB>> {
-        match self.a.parse(input) {
-            ParseResult::Found { subject, rest } => ParseResult::Found {
-                subject: Either::Left(subject),
-                rest,
-            },
-            ParseResult::Missed { .. } => self.b.parse(input).map(Either::Right),
-        }
+        self.a.parse(input).or_else(|| self.b.parse(input))
     }
 }
 
