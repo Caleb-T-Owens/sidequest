@@ -5,8 +5,11 @@ fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind(address)?;
     println!("Listening on {address}");
 
-    for _stream in listener.incoming() {
-        println!("A stream has been found!");
+    for stream in listener.incoming() {
+        let stream = stream?;
+
+        let connector = stream.peer_addr()?;
+        println!("Talking to: {}", connector);
     }
 
     Ok(())
