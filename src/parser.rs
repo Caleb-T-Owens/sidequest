@@ -116,6 +116,37 @@ pub(crate) trait Parser<'i, Out> {
             b: Box::new(b),
         }
     }
+
+    #[allow(unused)]
+    fn span(self: Self) -> SpanParser<'i, Out>
+    where
+        Self: Sized + 'static,
+    {
+        SpanParser(Box::new(self))
+    }
+}
+
+
+#[allow(unused)]
+pub(crate) struct SpanParser<'i, Out>(Box<dyn Parser<'i, Out>>);
+
+impl<'i, Out> Parser<'i, Vec<Out>> for SpanParser<'i, Out> {
+    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, Vec<Out>> {
+        let mut result = vec![];
+        let mut rest = input;
+
+        loop {
+            match self.0.parse(rest) {
+                ParseResult::Found { subject, rest: new_rest } => {
+                    result.push(subject);
+                    rest = new_rest;
+                },
+                ParseResult::Missed { .. } => break
+            }
+        }
+
+        ParseResult::Found { subject: result, rest }
+    }
 }
 
 #[allow(unused)]
