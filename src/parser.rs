@@ -126,6 +126,14 @@ pub(crate) trait Parser<Out> {
     }
 }
 
+impl<Out, P> Parser<Out> for Box<P>
+where
+    P: Parser<Out> + ?Sized,
+{
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Out> {
+        (**self).parse(input)
+    }
+}
 
 #[allow(unused)]
 pub(crate) struct SpanParser<Out>(Box<dyn Parser<Out>>);
