@@ -1,6 +1,7 @@
+use std::io::{BufRead as _, BufReader};
 use std::net::TcpListener;
-use std::io::{BufReader, BufRead as _};
 
+#[allow(unused)]
 fn tcp() -> std::io::Result<()> {
     let address = "localhost:3000";
     let listener = TcpListener::bind(address)?;
@@ -31,7 +32,7 @@ fn tcp() -> std::io::Result<()> {
 }
 
 fn main() -> std::io::Result<()> {
-    tcp()?;
+    // tcp()?;
 
     Ok(())
 }
