@@ -84,6 +84,28 @@ trait Parser<'i, Out> {
     {
         InspectorParser(Box::new(self))
     }
+
+    fn map<U, F>(self: Self, op: F) -> MappedParser<'i, Out, U, F>
+    where
+        F: FnOnce(Out) -> U + Clone + Copy,
+        Self: Sized + 'static,
+    {
+        MappedParser {
+            parser: Box::new(self),
+            op,
+        }
+    }
+}
+
+struct MappedParser<'i, Out, U, F: FnOnce(Out) -> U> {
+    parser: Box<dyn Parser<'i, Out>>,
+    op: F,
+}
+
+impl<'i, Out, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<'i, U> for MappedParser<'i, Out, U, F> {
+    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, U> {
+        self.parser.parse(input).map(self.op)
+    }
 }
 
 struct InspectorParser<'i, Out>(Box<dyn Parser<'i, Out>>);
@@ -120,10 +142,12 @@ impl<'i, 't> Parser<'i, &'t [u8]> for TermParser<'t> {
 fn main() -> std::io::Result<()> {
     // tcp()?;
 
-    let hello_p = TermParser::new(b"hello").inspect();
+    let hello_p = TermParser::new(b"hello")
+        .inspect()
+        .map(|term| term.to_ascii_uppercase());
     let outcome = hello_p.parse(b"hello world!");
 
-    println!("We got: {:?}", outcome.map(|_| "Something else!"));
+    println!("We got: {:?}", outcome);
 
     Ok(())
 }
