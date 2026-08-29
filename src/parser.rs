@@ -8,6 +8,7 @@ pub(crate) enum ParseResult<'i, T> {
 }
 
 impl<'i, T> ParseResult<'i, T> {
+    #[allow(unused)]
     fn map<U, F>(self, op: F) -> ParseResult<'i, U>
     where
         F: FnOnce(T) -> U,
@@ -78,8 +79,48 @@ pub(crate) trait Parser<'i, Out> {
             b: Box::new(b),
         }
     }
+
+    #[allow(unused)]
+    fn and<OutB, B>(self: Self, b: B) -> AndParser<'i, Out, OutB>
+    where
+        B: Parser<'i, OutB> + 'static,
+        Self: Sized + 'static,
+    {
+        AndParser {
+            a: Box::new(self),
+            b: Box::new(b),
+        }
+    }
 }
 
+#[allow(unused)]
+pub(crate) struct AndParser<'i, OutA, OutB> {
+    a: Box<dyn Parser<'i, OutA>>,
+    b: Box<dyn Parser<'i, OutB>>,
+}
+
+impl<'i, OutA, OutB> Parser<'i, (OutA, OutB)> for AndParser<'i, OutA, OutB> {
+    fn parse(&self, input: &'i [u8]) -> ParseResult<'i, (OutA, OutB)> {
+        match self.a.parse(input) {
+            ParseResult::Found {
+                subject: a,
+                rest: a_rest,
+            } => match self.b.parse(a_rest) {
+                ParseResult::Found {
+                    subject: b,
+                    rest: b_rest,
+                } => ParseResult::Found {
+                    subject: (a, b),
+                    rest: b_rest,
+                },
+                ParseResult::Missed { rest } => ParseResult::Missed { rest },
+            },
+            ParseResult::Missed { rest } => ParseResult::Missed { rest },
+        }
+    }
+}
+
+#[allow(unused)]
 pub(crate) struct OrParser<'i, OutA, OutB> {
     a: Box<dyn Parser<'i, OutA>>,
     b: Box<dyn Parser<'i, OutB>>,

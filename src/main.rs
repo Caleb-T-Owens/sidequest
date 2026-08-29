@@ -39,10 +39,10 @@ fn tcp() -> std::io::Result<()> {
 fn main() -> std::io::Result<()> {
     // tcp()?;
 
-    let parser = TermParser::new(b"hello").or(TermParser::new(b"stuff"));
-    dbg!(parser.parse(b"hello world!"));
-    dbg!(parser.parse(b"stuff and things"));
-    dbg!(parser.parse(b"things and stuff"));
+    let parser = TermParser::new(b"cof").and(TermParser::new(b"fee"));
+    dbg!(parser.parse(b"coffee is good!"));
+    dbg!(parser.parse(b"cof eh?"));
+    dbg!(parser.parse(b"fee fo"));
 
     Ok(())
 }
