@@ -122,7 +122,19 @@ pub(crate) trait Parser<Out> {
     where
         Self: Sized + 'static,
     {
-        SpanParser(Box::new(self))
+        self.bounded_span(0, usize::MAX)
+    }
+
+    #[allow(unused)]
+    fn bounded_span(self: Self, min: usize, max: usize) -> SpanParser<Out>
+    where
+        Self: Sized + 'static,
+    {
+        SpanParser {
+            parser: Box::new(self),
+            min,
+            max
+        }
     }
 }
 
@@ -136,7 +148,11 @@ where
 }
 
 #[allow(unused)]
-pub(crate) struct SpanParser<Out>(Box<dyn Parser<Out>>);
+pub(crate) struct SpanParser<Out> {
+    parser: Box<dyn Parser<Out>>,
+    min: usize,
+    max: usize,
+}
 
 impl<Out> Parser<Vec<Out>> for SpanParser<Out> {
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Vec<Out>> {
@@ -144,7 +160,7 @@ impl<Out> Parser<Vec<Out>> for SpanParser<Out> {
         let mut rest = input;
 
         loop {
-            match self.0.parse(rest) {
+            match self.parser.parse(rest) {
                 ParseResult::Found {
                     subject,
                     rest: new_rest,
@@ -156,9 +172,13 @@ impl<Out> Parser<Vec<Out>> for SpanParser<Out> {
             }
         }
 
-        ParseResult::Found {
-            subject: result,
-            rest,
+        if result.len() < self.max && result.len() > self.min {
+            ParseResult::Found {
+                subject: result,
+                rest,
+            }
+        } else {
+            ParseResult::Missed { rest: input }
         }
     }
 }
