@@ -1,7 +1,7 @@
 use std::net::TcpListener;
 use std::io::{BufReader, BufRead as _};
 
-fn main() -> std::io::Result<()> {
+fn tcp() -> std::io::Result<()> {
     let address = "localhost:3000";
     let listener = TcpListener::bind(address)?;
     println!("Listening on {address}");
@@ -18,11 +18,20 @@ fn main() -> std::io::Result<()> {
         loop {
             reader.read_line(&mut line)?;
             print!("{line}");
-            line.clear();
 
-            // TODO: We should probably stop at some point...
+            if line == "\r\n" {
+                break;
+            }
+            line.clear();
         }
+        println!("Finished reading!");
     }
+
+    Ok(())
+}
+
+fn main() -> std::io::Result<()> {
+    tcp()?;
 
     Ok(())
 }
