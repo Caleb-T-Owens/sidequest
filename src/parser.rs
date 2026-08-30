@@ -82,7 +82,7 @@ pub(crate) trait Parser<Out> {
     }
 
     #[allow(unused)]
-    fn map<U, F>(self: Self, op: F) -> MapParser<Out, impl Parser<Out>, U, F>
+    fn map<U, F>(self: Self, op: F) -> MapParser<Out, Self, U, F>
     where
         F: FnOnce(Out) -> U + Clone + Copy,
         Self: Sized,
@@ -96,7 +96,7 @@ pub(crate) trait Parser<Out> {
     }
 
     #[allow(unused)]
-    fn or<OutB>(self: Self, b: impl Parser<OutB>) -> OrParser<impl Parser<Out>, impl Parser<OutB>>
+    fn or<OutB>(self: Self, b: impl Parser<OutB>) -> OrParser<Self, impl Parser<OutB>>
     where
         Self: Sized,
     {
@@ -104,7 +104,7 @@ pub(crate) trait Parser<Out> {
     }
 
     #[allow(unused)]
-    fn and<OutB>(self: Self, b: impl Parser<OutB>) -> AndParser<impl Parser<Out>, impl Parser<OutB>>
+    fn and<OutB>(self: Self, b: impl Parser<OutB>) -> AndParser<Self, impl Parser<OutB>>
     where
         Self: Sized,
     {
