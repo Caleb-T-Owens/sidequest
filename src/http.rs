@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::either::Either;
-use crate::parser::{MatchParser, Parser};
+use crate::parser::{ParseResult, MatchParser, Parser};
 
 fn char_p() -> impl Parser<Out = u8> {
     MatchParser::new(|u| u < 128)
@@ -108,4 +108,32 @@ fn quoted_string_p() -> impl Parser<Out = Vec<u8>> {
         .and(qd_text_p().or(quoted_pair_p()).map(Either::unify).span())
         .and(dq_p())
         .map(|((_, s), _)| s)
+}
+
+fn ctext_p() -> impl Parser<Out = u8> {
+    MatchParser::new(|u| is_text(u) && !b"()".contains(&u))
+}
+
+struct Comment(Vec<Either<Vec<u8>, Box<Comment>>>);
+
+struct CommentParser;
+
+impl Parser for CommentParser {
+    type Out = Comment;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(|u| u == b'(')
+            .and(
+                ctext_p()
+                    .or(quoted_pair_p())
+                    .map(Either::unify)
+                    .span()
+                    .or(CommentParser.map(Box::new))
+                    .span()
+                    .map(|c| Comment(c)),
+            )
+            .and(MatchParser::new(|u| u == b')'))
+            .map(|((_, c), _)| c)
+            .parse(input)
+    }
 }
