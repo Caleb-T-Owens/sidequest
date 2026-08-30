@@ -1,7 +1,7 @@
 use crate::either::Either;
 use crate::parser::{CharParser, MatchParser, ParseResult, Parser, RangeParser};
 
-struct CharP;
+pub(crate) struct CharP;
 impl Parser for CharP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -9,7 +9,7 @@ impl Parser for CharP {
     }
 }
 
-struct UpAlphaP;
+pub(crate) struct UpAlphaP;
 impl Parser for UpAlphaP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -17,7 +17,7 @@ impl Parser for UpAlphaP {
     }
 }
 
-struct LoAlphaP;
+pub(crate) struct LoAlphaP;
 impl Parser for LoAlphaP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -25,7 +25,7 @@ impl Parser for LoAlphaP {
     }
 }
 
-struct AlphaP;
+pub(crate) struct AlphaP;
 impl Parser for AlphaP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -33,11 +33,11 @@ impl Parser for AlphaP {
     }
 }
 
-fn is_digit(u: u8) -> bool {
+pub(crate) fn is_digit(u: u8) -> bool {
     (b'0'..=b'9').contains(&u)
 }
 
-struct DigitP;
+pub(crate) struct DigitP;
 impl Parser for DigitP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -45,11 +45,11 @@ impl Parser for DigitP {
     }
 }
 
-fn is_ctl(u: u8) -> bool {
+pub(crate) fn is_ctl(u: u8) -> bool {
     (0..=31).contains(&u) || u == 127
 }
 
-struct CtlP;
+pub(crate) struct CtlP;
 impl Parser for CtlP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -57,7 +57,7 @@ impl Parser for CtlP {
     }
 }
 
-struct CrP;
+pub(crate) struct CrP;
 impl Parser for CrP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -65,7 +65,7 @@ impl Parser for CrP {
     }
 }
 
-struct LfP;
+pub(crate) struct LfP;
 impl Parser for LfP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -73,11 +73,11 @@ impl Parser for LfP {
     }
 }
 
-fn is_sp(u: u8) -> bool {
+pub(crate) fn is_sp(u: u8) -> bool {
     u == b' '
 }
 
-struct SpP;
+pub(crate) struct SpP;
 impl Parser for SpP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -85,11 +85,11 @@ impl Parser for SpP {
     }
 }
 
-fn is_ht(u: u8) -> bool {
+pub(crate) fn is_ht(u: u8) -> bool {
     u == 9
 }
 
-struct HtP;
+pub(crate) struct HtP;
 impl Parser for HtP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -97,7 +97,7 @@ impl Parser for HtP {
     }
 }
 
-struct DqP;
+pub(crate) struct DqP;
 impl Parser for DqP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -105,8 +105,8 @@ impl Parser for DqP {
     }
 }
 
-struct Crlf;
-struct CrlfP;
+pub(crate) struct Crlf;
+pub(crate) struct CrlfP;
 impl Parser for CrlfP {
     type Out = Crlf;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -114,7 +114,7 @@ impl Parser for CrlfP {
     }
 }
 
-struct LwsP;
+pub(crate) struct LwsP;
 impl Parser for LwsP {
     type Out = Either<Vec<u8>, (Crlf, Vec<u8>)>;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -124,11 +124,11 @@ impl Parser for LwsP {
     }
 }
 
-fn is_text(u: u8) -> bool {
+pub(crate) fn is_text(u: u8) -> bool {
     !is_ctl(u) || is_sp(u)
 }
 
-struct TextP;
+pub(crate) struct TextP;
 impl Parser for TextP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -136,7 +136,7 @@ impl Parser for TextP {
     }
 }
 
-struct HexP;
+pub(crate) struct HexP;
 impl Parser for HexP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -147,11 +147,11 @@ impl Parser for HexP {
     }
 }
 
-fn is_seperator(u: u8) -> bool {
+pub(crate) fn is_seperator(u: u8) -> bool {
     is_sp(u) || is_ht(u) || b"()<>@,;:\\\"/[]?={}".contains(&u)
 }
 
-struct TokenP;
+pub(crate) struct TokenP;
 impl Parser for TokenP {
     type Out = Vec<u8>;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -159,7 +159,7 @@ impl Parser for TokenP {
     }
 }
 
-struct QuotedPairP;
+pub(crate) struct QuotedPairP;
 impl Parser for QuotedPairP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -170,7 +170,7 @@ impl Parser for QuotedPairP {
     }
 }
 
-struct QdTextP;
+pub(crate) struct QdTextP;
 impl Parser for QdTextP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -178,7 +178,7 @@ impl Parser for QdTextP {
     }
 }
 
-struct QuotedStringP;
+pub(crate) struct QuotedStringP;
 impl Parser for QuotedStringP {
     type Out = Vec<u8>;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -189,7 +189,7 @@ impl Parser for QuotedStringP {
     }
 }
 
-struct CTextP;
+pub(crate) struct CTextP;
 impl Parser for CTextP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -197,9 +197,9 @@ impl Parser for CTextP {
     }
 }
 
-struct Comment(Vec<Either<Vec<u8>, Box<Comment>>>);
+pub(crate) struct Comment(Vec<Either<Vec<u8>, Box<Comment>>>);
 
-struct CommentP;
+pub(crate) struct CommentP;
 impl Parser for CommentP {
     type Out = Comment;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
