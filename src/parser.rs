@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::either::Either;
 use std::fmt::Debug;
 
@@ -8,7 +10,6 @@ pub(crate) enum ParseResult<'i, T> {
 }
 
 impl<'i, T> ParseResult<'i, T> {
-    #[allow(unused)]
     fn map<U, F>(self, op: F) -> ParseResult<'i, U>
     where
         F: FnOnce(T) -> U,
@@ -22,7 +23,6 @@ impl<'i, T> ParseResult<'i, T> {
         }
     }
 
-    #[allow(unused)]
     fn then<U, F>(self, op: F) -> ParseResult<'i, U>
     where
         F: FnOnce(T, &'i [u8]) -> ParseResult<'i, U>,
@@ -33,7 +33,6 @@ impl<'i, T> ParseResult<'i, T> {
         }
     }
 
-    #[allow(unused)]
     fn or_else<U, F>(self, op: F) -> ParseResult<'i, Either<T, U>>
     where
         F: FnOnce() -> ParseResult<'i, U>,
@@ -75,7 +74,6 @@ pub(crate) trait Parser {
 
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out>;
 
-    #[allow(unused)]
     fn inspect(self: Self) -> InspectParser<Self>
     where
         Self: Sized,
@@ -84,7 +82,6 @@ pub(crate) trait Parser {
         InspectParser(self)
     }
 
-    #[allow(unused)]
     fn map<U, F>(self: Self, op: F) -> MapParser<Self, F>
     where
         F: FnOnce(Self::Out) -> U + Clone + Copy,
@@ -93,7 +90,6 @@ pub(crate) trait Parser {
         MapParser { parser: self, op }
     }
 
-    #[allow(unused)]
     fn or<P: Parser>(self: Self, b: P) -> OrParser<Self, P>
     where
         Self: Sized,
@@ -101,7 +97,6 @@ pub(crate) trait Parser {
         OrParser { a: self, b }
     }
 
-    #[allow(unused)]
     fn and<P: Parser>(self: Self, b: P) -> AndParser<Self, P>
     where
         Self: Sized,
@@ -109,7 +104,6 @@ pub(crate) trait Parser {
         AndParser { a: self, b }
     }
 
-    #[allow(unused)]
     fn span(self: Self) -> SpanParser<Self>
     where
         Self: Sized,
@@ -117,7 +111,6 @@ pub(crate) trait Parser {
         self.bounded_span(0, usize::MAX)
     }
 
-    #[allow(unused)]
     fn bounded_span(self: Self, min: usize, max: usize) -> SpanParser<Self>
     where
         Self: Sized,
@@ -140,7 +133,6 @@ where
     }
 }
 
-#[allow(unused)]
 pub(crate) struct SpanParser<P> {
     parser: P,
     min: usize,
@@ -181,7 +173,6 @@ impl<P: Parser> Parser for SpanParser<P> {
     }
 }
 
-#[allow(unused)]
 pub(crate) struct AndParser<A, B> {
     a: A,
     b: B,
@@ -196,7 +187,6 @@ impl<A: Parser, B: Parser> Parser for AndParser<A, B> {
     }
 }
 
-#[allow(unused)]
 pub(crate) struct OrParser<A, B> {
     a: A,
     b: B,
@@ -209,7 +199,6 @@ impl<A: Parser, B: Parser> Parser for OrParser<A, B> {
     }
 }
 
-#[allow(unused)]
 pub(crate) struct MapParser<P, F> {
     parser: P,
     op: F,
@@ -222,7 +211,6 @@ impl<P: Parser, U, F: FnOnce(P::Out) -> U + Clone + Copy> Parser for MapParser<P
     }
 }
 
-#[allow(unused)]
 pub(crate) struct InspectParser<P>(P);
 
 impl<P: Parser> Parser for InspectParser<P>
@@ -235,7 +223,6 @@ where
     }
 }
 
-#[allow(unused)]
 pub(crate) struct TermParser<'t> {
     term: &'t [u8],
 }
@@ -261,13 +248,11 @@ impl<'t> Parser for TermParser<'t> {
     }
 }
 
-#[allow(unused)]
 pub(crate) struct MatchParser<F: Fn(u8) -> bool> {
     matcher: F,
 }
 
 impl<F: Fn(u8) -> bool> MatchParser<F> {
-    #[allow(unused)]
     pub(crate) fn new(matcher: F) -> Self {
         Self { matcher }
     }
