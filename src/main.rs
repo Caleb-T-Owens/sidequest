@@ -3,6 +3,7 @@ use std::net::TcpListener;
 
 mod either;
 mod parser;
+mod http;
 
 use crate::parser::{Parser as _, TermParser};
 
