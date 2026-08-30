@@ -154,6 +154,9 @@ impl<Out, P: Parser<Out>> Parser<Vec<Out>> for SpanParser<P> {
         let mut rest = input;
 
         loop {
+            if result.len() >= self.max {
+                break;
+            }
             match self.parser.parse(rest) {
                 ParseResult::Found {
                     subject,
@@ -166,7 +169,7 @@ impl<Out, P: Parser<Out>> Parser<Vec<Out>> for SpanParser<P> {
             }
         }
 
-        if result.len() < self.max && result.len() > self.min {
+        if result.len() >= self.min {
             ParseResult::Found {
                 subject: result,
                 rest,
