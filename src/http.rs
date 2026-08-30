@@ -3,130 +3,214 @@
 use crate::either::Either;
 use crate::parser::{CharParser, MatchParser, ParseResult, Parser, RangeParser};
 
-fn char_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| u < 128)
+struct CharP;
+impl Parser for CharP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(|u| u < 128).parse(input)
+    }
 }
 
-fn up_alpha_p() -> impl Parser<Out = u8> {
-    RangeParser::new(b'A'..=b'Z')
+struct UpAlphaP;
+impl Parser for UpAlphaP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        RangeParser::new(b'A'..=b'Z').parse(input)
+    }
 }
 
-fn lo_alpha_p() -> impl Parser<Out = u8> {
-    RangeParser::new(b'a'..=b'z')
+struct LoAlphaP;
+impl Parser for LoAlphaP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        RangeParser::new(b'a'..=b'z').parse(input)
+    }
 }
 
-fn alpha_p() -> impl Parser<Out = u8> {
-    up_alpha_p().or(lo_alpha_p()).map(Either::unify)
+struct AlphaP;
+impl Parser for AlphaP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        UpAlphaP.or(LoAlphaP).map(Either::unify).parse(input)
+    }
 }
 
 fn is_digit(u: u8) -> bool {
     (b'0'..=b'9').contains(&u)
 }
 
-fn digit_p() -> impl Parser<Out = u8> {
-    MatchParser::new(is_digit)
+struct DigitP;
+impl Parser for DigitP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(is_digit).parse(input)
+    }
 }
 
 fn is_ctl(u: u8) -> bool {
     (0..=31).contains(&u) || u == 127
 }
 
-fn ctl_p() -> impl Parser<Out = u8> {
-    MatchParser::new(is_ctl)
+struct CtlP;
+impl Parser for CtlP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(is_ctl).parse(input)
+    }
 }
 
-fn cr_p() -> impl Parser<Out = u8> {
-    CharParser::new(13)
+struct CrP;
+impl Parser for CrP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        CharParser::new(b'\r').parse(input)
+    }
 }
 
-fn lf_p() -> impl Parser<Out = u8> {
-    CharParser::new(10)
+struct LfP;
+impl Parser for LfP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        CharParser::new(b'\n').parse(input)
+    }
 }
 
 fn is_sp(u: u8) -> bool {
-    u == 32
+    u == b' '
 }
 
-fn sp_p() -> impl Parser<Out = u8> {
-    MatchParser::new(is_sp)
+struct SpP;
+impl Parser for SpP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(is_sp).parse(input)
+    }
 }
 
 fn is_ht(u: u8) -> bool {
-    u == 32
+    u == 9
 }
 
-fn ht_p() -> impl Parser<Out = u8> {
-    CharParser::new(9)
+struct HtP;
+impl Parser for HtP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(is_ht).parse(input)
+    }
 }
 
-fn dq_p() -> impl Parser<Out = u8> {
-    CharParser::new(34)
+struct DqP;
+impl Parser for DqP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        CharParser::new(b'"').parse(input)
+    }
 }
 
-fn crlf_p() -> impl Parser<Out = (u8, u8)> {
-    cr_p().and(lf_p())
+struct CrlfP;
+impl Parser for CrlfP {
+    type Out = (u8, u8);
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        CrP.and(LfP).parse(input)
+    }
 }
 
-fn lws_p() -> impl Parser {
-    let spaces_p = || sp_p().or(ht_p()).bounded_span(1, usize::MAX);
+struct LwsP;
+impl Parser for LwsP {
+    type Out = Either<Vec<u8>, ((u8, u8), Vec<u8>)>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        let spaces_p = || SpP.or(HtP).map(Either::unify).bounded_span(1, usize::MAX);
 
-    spaces_p().or(crlf_p().and(spaces_p()))
+        spaces_p().or(CrlfP.and(spaces_p())).parse(input)
+    }
 }
 
 fn is_text(u: u8) -> bool {
     !is_ctl(u) || is_sp(u)
 }
 
-fn text_p() -> impl Parser<Out = u8> {
-    MatchParser::new(is_text)
+struct TextP;
+impl Parser for TextP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(is_text).parse(input)
+    }
 }
 
-fn hex_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| is_digit(u) || (b'a'..=b'f').contains(&u) || (b'A'..=b'F').contains(&u))
+struct HexP;
+impl Parser for HexP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(|u| {
+            is_digit(u) || (b'a'..=b'f').contains(&u) || (b'A'..=b'F').contains(&u)
+        })
+        .parse(input)
+    }
 }
 
 fn is_seperator(u: u8) -> bool {
     is_sp(u) || is_ht(u) || b"()<>@,;:\\\"/[]?={}".contains(&u)
 }
 
-fn token_p() -> impl Parser<Out = Vec<u8>> {
-    MatchParser::new(|u| !is_seperator(u)).span()
+struct TokenP;
+impl Parser for TokenP {
+    type Out = Vec<u8>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(|u| !is_seperator(u)).span().parse(input)
+    }
 }
 
-fn quoted_pair_p() -> impl Parser<Out = u8> {
-    CharParser::new(b'\\').and(char_p()).map(|(_, c)| c)
+struct QuotedPairP;
+impl Parser for QuotedPairP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        CharParser::new(b'\\')
+            .and(CharP)
+            .map(|(_, c)| c)
+            .parse(input)
+    }
 }
 
-fn qd_text_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| is_text(u) && u != b'"')
+struct QdTextP;
+impl Parser for QdTextP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(|u| is_text(u) && u != b'"').parse(input)
+    }
 }
 
-fn quoted_string_p() -> impl Parser<Out = Vec<u8>> {
-    dq_p()
-        .and(qd_text_p().or(quoted_pair_p()).map(Either::unify).span())
-        .and(dq_p())
-        .map(|((_, s), _)| s)
+struct QuotedStringP;
+impl Parser for QuotedStringP {
+    type Out = Vec<u8>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        DqP.and(QdTextP.or(QuotedPairP).map(Either::unify).span())
+            .and(DqP)
+            .map(|((_, s), _)| s)
+            .parse(input)
+    }
 }
 
-fn ctext_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| is_text(u) && !b"()".contains(&u))
+struct CTextP;
+impl Parser for CTextP {
+    type Out = u8;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MatchParser::new(|u| is_text(u) && !b"()".contains(&u)).parse(input)
+    }
 }
 
 struct Comment(Vec<Either<Vec<u8>, Box<Comment>>>);
 
-struct CommentParser;
-
-impl Parser for CommentParser {
+struct CommentP;
+impl Parser for CommentP {
     type Out = Comment;
-
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         CharParser::new(b'(')
             .and(
-                ctext_p()
-                    .or(quoted_pair_p())
+                CTextP
+                    .or(QuotedPairP)
                     .map(Either::unify)
                     .span()
-                    .or(CommentParser.map(Box::new))
+                    .or(CommentP.map(Box::new))
                     .span()
                     .map(|c| Comment(c)),
             )
