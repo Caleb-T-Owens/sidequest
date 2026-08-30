@@ -1,5 +1,5 @@
 use crate::either::Either;
-use std::fmt::Debug;
+use std::{fmt::Debug, marker::PhantomData};
 
 #[derive(PartialEq, Eq)]
 pub(crate) enum ParseResult<'i, T> {
@@ -82,14 +82,16 @@ pub(crate) trait Parser<Out> {
     }
 
     #[allow(unused)]
-    fn map<U, F>(self: Self, op: F) -> MapParser<Out, U, F>
+    fn map<U, F>(self: Self, op: F) -> MapParser<Out, impl Parser<Out>, U, F>
     where
         F: FnOnce(Out) -> U + Clone + Copy,
-        Self: Sized + 'static,
+        Self: Sized,
     {
         MapParser {
-            parser: Box::new(self),
+            parser: self,
             op,
+            _out: PhantomData::default(),
+            _u: PhantomData::default(),
         }
     }
 
@@ -210,12 +212,14 @@ impl<OutA, OutB> Parser<Either<OutA, OutB>> for OrParser<OutA, OutB> {
 }
 
 #[allow(unused)]
-pub(crate) struct MapParser<Out, U, F: FnOnce(Out) -> U> {
-    parser: Box<dyn Parser<Out>>,
+pub(crate) struct MapParser<Out, P, U, F: FnOnce(Out) -> U> {
+    parser: P,
     op: F,
+    _out: PhantomData<Out>,
+    _u: PhantomData<U>,
 }
 
-impl<Out, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<U> for MapParser<Out, U, F> {
+impl<Out, P: Parser<Out>, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<U> for MapParser<Out, P, U, F> {
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, U> {
         self.parser.parse(input).map(self.op)
     }
