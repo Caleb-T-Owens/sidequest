@@ -107,17 +107,18 @@ impl Parser for DqP {
     }
 }
 
+struct Crlf;
 struct CrlfP;
 impl Parser for CrlfP {
-    type Out = (u8, u8);
+    type Out = Crlf;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-        CrP.and(LfP).parse(input)
+        CrP.and(LfP).map(|_| Crlf).parse(input)
     }
 }
 
 struct LwsP;
 impl Parser for LwsP {
-    type Out = Either<Vec<u8>, ((u8, u8), Vec<u8>)>;
+    type Out = Either<Vec<u8>, (Crlf, Vec<u8>)>;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         let spaces_p = || SpP.or(HtP).map(Either::unify).bounded_span(1, usize::MAX);
 
