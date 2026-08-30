@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::either::Either;
 use crate::parser::{CharParser, MatchParser, ParseResult, Parser, RangeParser};
 
