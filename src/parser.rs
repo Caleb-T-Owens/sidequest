@@ -1,5 +1,5 @@
 use crate::either::Either;
-use std::{fmt::Debug, marker::PhantomData};
+use std::fmt::Debug;
 
 #[derive(PartialEq, Eq)]
 pub(crate) enum ParseResult<'i, T> {
@@ -70,49 +70,47 @@ impl<'i, T: Debug> Debug for ParseResult<'i, T> {
     }
 }
 
-pub(crate) trait Parser<Out> {
-    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Out>;
+pub(crate) trait Parser {
+    type Out;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out>;
 
     #[allow(unused)]
-    fn inspect(self: Self) -> InspectParser<impl Parser<Out>>
+    fn inspect(self: Self) -> InspectParser<Self>
     where
         Self: Sized,
+        Self::Out: Debug,
     {
         InspectParser(self)
     }
 
     #[allow(unused)]
-    fn map<U, F>(self: Self, op: F) -> MapParser<Out, Self, U, F>
+    fn map<U, F>(self: Self, op: F) -> MapParser<Self, F>
     where
-        F: FnOnce(Out) -> U + Clone + Copy,
+        F: FnOnce(Self::Out) -> U + Clone + Copy,
         Self: Sized,
     {
-        MapParser {
-            parser: self,
-            op,
-            _out: PhantomData::default(),
-            _u: PhantomData::default(),
-        }
+        MapParser { parser: self, op }
     }
 
     #[allow(unused)]
-    fn or<OutB>(self: Self, b: impl Parser<OutB>) -> OrParser<Self, impl Parser<OutB>>
+    fn or<P: Parser>(self: Self, b: P) -> OrParser<Self, P>
     where
         Self: Sized,
     {
-        OrParser { a: self, b: b }
+        OrParser { a: self, b }
     }
 
     #[allow(unused)]
-    fn and<OutB>(self: Self, b: impl Parser<OutB>) -> AndParser<Self, impl Parser<OutB>>
+    fn and<P: Parser>(self: Self, b: P) -> AndParser<Self, P>
     where
         Self: Sized,
     {
-        AndParser { a: self, b: b }
+        AndParser { a: self, b }
     }
 
     #[allow(unused)]
-    fn span(self: Self) -> SpanParser<impl Parser<Out>>
+    fn span(self: Self) -> SpanParser<Self>
     where
         Self: Sized,
     {
@@ -120,7 +118,7 @@ pub(crate) trait Parser<Out> {
     }
 
     #[allow(unused)]
-    fn bounded_span(self: Self, min: usize, max: usize) -> SpanParser<impl Parser<Out>>
+    fn bounded_span(self: Self, min: usize, max: usize) -> SpanParser<Self>
     where
         Self: Sized,
     {
@@ -132,11 +130,12 @@ pub(crate) trait Parser<Out> {
     }
 }
 
-impl<Out, P> Parser<Out> for Box<P>
+impl<P> Parser for Box<P>
 where
-    P: Parser<Out> + ?Sized,
+    P: Parser + ?Sized,
 {
-    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Out> {
+    type Out = P::Out;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         (**self).parse(input)
     }
 }
@@ -148,8 +147,10 @@ pub(crate) struct SpanParser<P> {
     max: usize,
 }
 
-impl<Out, P: Parser<Out>> Parser<Vec<Out>> for SpanParser<P> {
-    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Vec<Out>> {
+impl<P: Parser> Parser for SpanParser<P> {
+    type Out = Vec<P::Out>;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         let mut result = vec![];
         let mut rest = input;
 
@@ -186,8 +187,9 @@ pub(crate) struct AndParser<A, B> {
     b: B,
 }
 
-impl<OutA, OutB, A: Parser<OutA>, B: Parser<OutB>> Parser<(OutA, OutB)> for AndParser<A, B> {
-    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, (OutA, OutB)> {
+impl<A: Parser, B: Parser> Parser for AndParser<A, B> {
+    type Out = (A::Out, B::Out);
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         self.a
             .parse(input)
             .then(|a, a_rest| self.b.parse(a_rest).map(|b| (a, b)))
@@ -200,23 +202,21 @@ pub(crate) struct OrParser<A, B> {
     b: B,
 }
 
-impl<OutA, OutB, A: Parser<OutA>, B: Parser<OutB>> Parser<Either<OutA, OutB>> for OrParser<A, B> {
-    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Either<OutA, OutB>> {
+impl<A: Parser, B: Parser> Parser for OrParser<A, B> {
+    type Out = Either<A::Out, B::Out>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         self.a.parse(input).or_else(|| self.b.parse(input))
     }
 }
 
 #[allow(unused)]
-pub(crate) struct MapParser<Out, P, U, F: FnOnce(Out) -> U> {
+pub(crate) struct MapParser<P, F> {
     parser: P,
     op: F,
-    _out: PhantomData<Out>,
-    _u: PhantomData<U>,
 }
 
-impl<Out, P: Parser<Out>, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<U>
-    for MapParser<Out, P, U, F>
-{
+impl<P: Parser, U, F: FnOnce(P::Out) -> U + Clone + Copy> Parser for MapParser<P, F> {
+    type Out = U;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, U> {
         self.parser.parse(input).map(self.op)
     }
@@ -225,8 +225,12 @@ impl<Out, P: Parser<Out>, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<U>
 #[allow(unused)]
 pub(crate) struct InspectParser<P>(P);
 
-impl<Out: Debug, P: Parser<Out>> Parser<Out> for InspectParser<P> {
-    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Out> {
+impl<P: Parser> Parser for InspectParser<P>
+where
+    P::Out: Debug,
+{
+    type Out = P::Out;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         dbg!(self.0.parse(input))
     }
 }
@@ -242,7 +246,9 @@ impl<'t> TermParser<'t> {
     }
 }
 
-impl<'t> Parser<&'t [u8]> for TermParser<'t> {
+impl<'t> Parser for TermParser<'t> {
+    type Out = &'t [u8];
+
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, &'t [u8]> {
         if input.starts_with(self.term) {
             ParseResult::Found {
@@ -267,7 +273,9 @@ impl<F: Fn(u8) -> bool> MatchParser<F> {
     }
 }
 
-impl<F: Fn(u8) -> bool> Parser<u8> for MatchParser<F> {
+impl<F: Fn(u8) -> bool> Parser for MatchParser<F> {
+    type Out = u8;
+
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, u8> {
         if let Some(a) = input.first()
             && (self.matcher)(*a)
