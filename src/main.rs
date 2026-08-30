@@ -2,8 +2,8 @@ use std::io::{BufRead as _, BufReader};
 use std::net::TcpListener;
 
 mod either;
-mod parser;
 mod http;
+mod parser;
 
 use crate::parser::{Parser as _, TermParser};
 
