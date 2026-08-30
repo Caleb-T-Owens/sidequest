@@ -1,18 +1,18 @@
 #![allow(dead_code)]
 
 use crate::either::Either;
-use crate::parser::{ParseResult, MatchParser, Parser};
+use crate::parser::{CharParser, MatchParser, ParseResult, Parser, RangeParser};
 
 fn char_p() -> impl Parser<Out = u8> {
     MatchParser::new(|u| u < 128)
 }
 
 fn up_alpha_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| (b'A'..=b'Z').contains(&u))
+    RangeParser::new(b'A'..=b'Z')
 }
 
 fn lo_alpha_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| (b'a'..=b'z').contains(&u))
+    RangeParser::new(b'a'..=b'z')
 }
 
 fn alpha_p() -> impl Parser<Out = u8> {
@@ -36,11 +36,11 @@ fn ctl_p() -> impl Parser<Out = u8> {
 }
 
 fn cr_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| u == 13)
+    CharParser::new(13)
 }
 
 fn lf_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| u == 10)
+    CharParser::new(10)
 }
 
 fn is_sp(u: u8) -> bool {
@@ -56,11 +56,11 @@ fn is_ht(u: u8) -> bool {
 }
 
 fn ht_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| u == 9)
+    CharParser::new(9)
 }
 
 fn dq_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| u == 34)
+    CharParser::new(34)
 }
 
 fn crlf_p() -> impl Parser<Out = (u8, u8)> {
@@ -94,9 +94,7 @@ fn token_p() -> impl Parser<Out = Vec<u8>> {
 }
 
 fn quoted_pair_p() -> impl Parser<Out = u8> {
-    MatchParser::new(|u| u == b'\\')
-        .and(char_p())
-        .map(|(_, c)| c)
+    CharParser::new(b'\\').and(char_p()).map(|(_, c)| c)
 }
 
 fn qd_text_p() -> impl Parser<Out = u8> {
@@ -122,7 +120,7 @@ impl Parser for CommentParser {
     type Out = Comment;
 
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-        MatchParser::new(|u| u == b'(')
+        CharParser::new(b'(')
             .and(
                 ctext_p()
                     .or(quoted_pair_p())
@@ -132,7 +130,7 @@ impl Parser for CommentParser {
                     .span()
                     .map(|c| Comment(c)),
             )
-            .and(MatchParser::new(|u| u == b')'))
+            .and(CharParser::new(b')'))
             .map(|((_, c), _)| c)
             .parse(input)
     }

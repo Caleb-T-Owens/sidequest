@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::either::Either;
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::RangeBounds};
 
 #[derive(PartialEq, Eq)]
 pub(crate) enum ParseResult<'i, T> {
@@ -264,6 +264,60 @@ impl<F: Fn(u8) -> bool> Parser for MatchParser<F> {
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, u8> {
         if let Some(a) = input.first()
             && (self.matcher)(*a)
+        {
+            ParseResult::Found {
+                subject: *a,
+                rest: &input[1..],
+            }
+        } else {
+            ParseResult::Missed { rest: input }
+        }
+    }
+}
+
+pub(crate) struct RangeParser<R> {
+    range: R,
+}
+
+impl<R: RangeBounds<u8>> RangeParser<R> {
+    pub(crate) fn new(range: R) -> Self {
+        Self { range }
+    }
+}
+
+impl<R: RangeBounds<u8>> Parser for RangeParser<R> {
+    type Out = u8;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, u8> {
+        if let Some(a) = input.first()
+            && self.range.contains(a)
+        {
+            ParseResult::Found {
+                subject: *a,
+                rest: &input[1..],
+            }
+        } else {
+            ParseResult::Missed { rest: input }
+        }
+    }
+}
+
+pub(crate) struct CharParser {
+    char: u8,
+}
+
+impl CharParser {
+    pub(crate) fn new(char: u8) -> Self {
+        Self { char }
+    }
+}
+
+impl Parser for CharParser {
+    type Out = u8;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, u8> {
+        if let Some(a) = input.first()
+            && *a == self.char
         {
             ParseResult::Found {
                 subject: *a,
