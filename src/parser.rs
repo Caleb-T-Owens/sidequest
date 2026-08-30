@@ -74,11 +74,11 @@ pub(crate) trait Parser<Out> {
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Out>;
 
     #[allow(unused)]
-    fn inspect(self: Self) -> InspectParser<Out>
+    fn inspect(self: Self) -> InspectParser<impl Parser<Out>>
     where
-        Self: Sized + 'static,
+        Self: Sized,
     {
-        InspectParser(Box::new(self))
+        InspectParser(self)
     }
 
     #[allow(unused)]
@@ -222,9 +222,9 @@ impl<Out, U, F: FnOnce(Out) -> U + Clone + Copy> Parser<U> for MapParser<Out, U,
 }
 
 #[allow(unused)]
-pub(crate) struct InspectParser<Out>(Box<dyn Parser<Out>>);
+pub(crate) struct InspectParser<P>(P);
 
-impl<Out: Debug> Parser<Out> for InspectParser<Out> {
+impl<Out: Debug, P: Parser<Out>> Parser<Out> for InspectParser<P> {
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Out> {
         dbg!(self.0.parse(input))
     }
