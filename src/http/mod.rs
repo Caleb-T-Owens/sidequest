@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::http::primatives::DigitP;
-use crate::parser::{ParseResult, Parser};
+use crate::parser::{InsensitiveTermParser, ParseResult, Parser};
 
 mod primatives;
 

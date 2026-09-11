@@ -5,7 +5,7 @@ mod either;
 mod http;
 mod parser;
 
-use crate::parser::{Parser as _, TermParser};
+use crate::parser::{InsensitiveTermParser, Parser as _};
 
 #[allow(unused)]
 fn tcp() -> std::io::Result<()> {
@@ -40,8 +40,8 @@ fn tcp() -> std::io::Result<()> {
 fn main() -> std::io::Result<()> {
     // tcp()?;
 
-    let parser = TermParser::new(b"na").span();
-    dbg!(parser.parse(b"nananana batman!"));
+    let parser = InsensitiveTermParser::new(b"Na").span();
+    dbg!(parser.parse(b"NanaNAnA batman!"));
 
     Ok(())
 }

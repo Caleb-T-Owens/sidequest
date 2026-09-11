@@ -248,6 +248,39 @@ impl<'t> Parser for TermParser<'t> {
     }
 }
 
+pub(crate) struct InsensitiveTermParser {
+    term: Vec<u8>,
+}
+
+impl InsensitiveTermParser {
+    pub(crate) fn new(term: impl Into<Vec<u8>>) -> Self {
+        Self {
+            term: term.into().to_ascii_lowercase(),
+        }
+    }
+}
+
+impl Parser for InsensitiveTermParser {
+    type Out = Vec<u8>;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Vec<u8>> {
+        if input.get(..self.term.len()).is_some_and(|input| {
+            input.iter().enumerate().all(|(i, b)| {
+                self.term
+                    .get(i)
+                    .is_some_and(|t| *t == b.to_ascii_lowercase())
+            })
+        }) {
+            ParseResult::Found {
+                subject: self.term.clone(),
+                rest: &input[self.term.len()..],
+            }
+        } else {
+            ParseResult::Missed { rest: input }
+        }
+    }
+}
+
 pub(crate) struct MatchParser<F: Fn(u8) -> bool> {
     matcher: F,
 }
