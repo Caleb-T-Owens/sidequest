@@ -90,6 +90,14 @@ pub(crate) trait Parser {
         MapParser { parser: self, op }
     }
 
+    fn then<P: Parser, F>(self: Self, op: F) -> ThenParser<Self, F>
+    where
+        F: FnOnce(Self::Out) -> P + Clone + Copy,
+        Self: Sized,
+    {
+        ThenParser { parser: self, op }
+    }
+
     fn or<P: Parser>(self: Self, b: P) -> OrParser<Self, P>
     where
         Self: Sized,
@@ -208,6 +216,20 @@ impl<P: Parser, U, F: FnOnce(P::Out) -> U + Clone + Copy> Parser for MapParser<P
     type Out = U;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, U> {
         self.parser.parse(input).map(self.op)
+    }
+}
+
+pub(crate) struct ThenParser<P, F> {
+    parser: P,
+    op: F,
+}
+
+impl<P: Parser, U: Parser, F: FnOnce(P::Out) -> U + Clone + Copy> Parser for ThenParser<P, F> {
+    type Out = U::Out;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        self.parser
+            .parse(input)
+            .then(|a, a_rest| (self.op)(a).parse(a_rest))
     }
 }
 
