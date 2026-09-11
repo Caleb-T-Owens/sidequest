@@ -147,6 +147,18 @@ impl Parser for HexP {
     }
 }
 
+pub(crate) fn hex_char_to_nibble(input: u8) -> u8 {
+    if is_digit(input) {
+        input - b'0'
+    } else {
+        input.to_ascii_lowercase() - b'a' + 10
+    }
+}
+
+pub(crate) fn hex_chars_to_nibble((a, b): (u8, u8)) -> u8 {
+    hex_char_to_nibble(a) * 16 + hex_char_to_nibble(b)
+}
+
 pub(crate) fn is_seperator(u: u8) -> bool {
     is_sp(u) || is_ht(u) || b"()<>@,;:\\\"/[]?={}".contains(&u)
 }

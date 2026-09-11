@@ -4,6 +4,7 @@ use crate::http::primatives::DigitP;
 use crate::parser::{CharParser, InsensitiveTermParser, ParseResult, Parser};
 
 mod primatives;
+mod url;
 
 pub(crate) struct USizeP;
 impl Parser for USizeP {
