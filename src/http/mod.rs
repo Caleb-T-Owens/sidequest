@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::http::primatives::DigitP;
-use crate::parser::{InsensitiveTermParser, ParseResult, Parser};
+use crate::parser::{CharParser, InsensitiveTermParser, ParseResult, Parser};
 
 mod primatives;
 
@@ -20,3 +20,20 @@ impl Parser for USizeP {
     }
 }
 
+#[derive(Debug)]
+pub(crate) struct HttpVersion {
+    pub(crate) major: usize,
+    pub(crate) minor: usize,
+}
+pub(crate) struct HttpVersionP;
+impl Parser for HttpVersionP {
+    type Out = HttpVersion;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        InsensitiveTermParser::new("http/")
+            .then(|_| USizeP)
+            .and(CharParser::new(b'.').then(|_| USizeP))
+            .map(|(major, minor)| HttpVersion { major, minor })
+            .parse(input)
+    }
+}
