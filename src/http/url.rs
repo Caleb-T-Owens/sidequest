@@ -296,3 +296,39 @@ impl Parser for HostPortP {
             .parse(input)
     }
 }
+
+pub(crate) struct UserInfoP;
+impl Parser for UserInfoP {
+    type Out = Vec<u8>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        UnreservedP
+            .or(EscapedP)
+            .map(Either::unify)
+            .or(MatchParser::new(|u| b";:&=+$,".contains(&u)))
+            .map(Either::unify)
+            .span()
+            .parse(input)
+    }
+}
+
+pub(crate) struct Server {
+    user_info: Option<Vec<u8>>,
+    location: HostPort,
+}
+pub(crate) struct ServerP;
+impl Parser for ServerP {
+    type Out = Option<Server>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        UserInfoP
+            .and(CharParser::new(b'@'))
+            .map(|(u, _)| u)
+            .optional()
+            .and(HostPortP)
+            .map(|(user_info, location)| Server {
+                user_info,
+                location,
+            })
+            .optional()
+            .parse(input)
+    }
+}
