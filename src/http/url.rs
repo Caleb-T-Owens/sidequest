@@ -164,13 +164,43 @@ pub(crate) struct PortP;
 impl Parser for PortP {
     type Out = Option<u32>;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-        DigitP.span().map(|r| {
-            if r.is_empty() {
-                None
-            } else {
-                Some(r.into_iter()
-                    .fold(0, |acc, d| acc * 10 + ((d - b'0') as u32)))
-            }
-        }).parse(input)
+        DigitP
+            .span()
+            .map(|r| {
+                if r.is_empty() {
+                    None
+                } else {
+                    Some(
+                        r.into_iter()
+                            .fold(0, |acc, d| acc * 10 + ((d - b'0') as u32)),
+                    )
+                }
+            })
+            .parse(input)
+    }
+}
+
+pub(crate) struct IPv4Address(u8, u8, u8, u8);
+pub(crate) struct IPv4AddressP;
+impl Parser for IPv4AddressP {
+    type Out = IPv4Address;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        let part = || {
+            DigitP.bounded_span(1, usize::MAX).map(|r| {
+                r.into_iter()
+                    .fold(0, |acc, d| acc * 10 + ((d - b'0') as u8))
+            })
+        };
+        let char = || CharParser::new(b'.');
+
+        part()
+            .and(char())
+            .and(part())
+            .and(char())
+            .and(part())
+            .and(char())
+            .and(part())
+            .map(|((((((a, _), b), _), c), _), d)| IPv4Address(a, b, c, d))
+            .parse(input)
     }
 }
