@@ -45,6 +45,19 @@ impl<'i, T> ParseResult<'i, T> {
             Self::Missed { .. } => op().map(Either::Right),
         }
     }
+
+    fn optional(self) -> ParseResult<'i, Option<T>> {
+        match self {
+            Self::Found { subject, rest } => ParseResult::Found {
+                subject: Some(subject),
+                rest,
+            },
+            Self::Missed { rest } => ParseResult::Found {
+                subject: None,
+                rest,
+            },
+        }
+    }
 }
 
 impl<'i, T: Debug> Debug for ParseResult<'i, T> {
@@ -117,6 +130,13 @@ pub(crate) trait Parser {
         Self: Sized,
     {
         self.bounded_span(0, usize::MAX)
+    }
+
+    fn optional(self: Self) -> OptionalParser<Self>
+    where
+        Self: Sized,
+    {
+        OptionalParser(self)
     }
 
     fn bounded_span(self: Self, min: usize, max: usize) -> SpanParser<Self>
@@ -230,6 +250,15 @@ impl<P: Parser, U: Parser, F: FnOnce(P::Out) -> U + Clone + Copy> Parser for The
         self.parser
             .parse(input)
             .then(|a, a_rest| (self.op)(a).parse(a_rest))
+    }
+}
+
+pub(crate) struct OptionalParser<P>(P);
+
+impl<P: Parser> Parser for OptionalParser<P> {
+    type Out = Option<P::Out>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        self.0.parse(input).optional()
     }
 }
 
