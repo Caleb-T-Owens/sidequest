@@ -136,10 +136,7 @@ pub(crate) struct OpaquePartP;
 impl Parser for OpaquePartP {
     type Out = Opaque;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-       UricNoSlashP 
-            .and(UricP.span())
-            .map(|_| Opaque)
-            .parse(input)
+        UricNoSlashP.and(UricP.span()).map(|_| Opaque).parse(input)
     }
 }
 
@@ -148,7 +145,10 @@ pub(crate) struct AbsolutePathP;
 impl Parser for AbsolutePathP {
     type Out = AbsolutePath;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-        CharParser::new(b'/').then(|_| PathSegmentsP).map(AbsolutePath).parse(input)
+        CharParser::new(b'/')
+            .then(|_| PathSegmentsP)
+            .map(AbsolutePath)
+            .parse(input)
     }
 }
 
@@ -157,5 +157,20 @@ impl Parser for PathP {
     type Out = Either<AbsolutePath, Opaque>;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         AbsolutePathP.or(OpaquePartP).parse(input)
+    }
+}
+
+pub(crate) struct PortP;
+impl Parser for PortP {
+    type Out = Option<u32>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        DigitP.span().map(|r| {
+            if r.is_empty() {
+                None
+            } else {
+                Some(r.into_iter()
+                    .fold(0, |acc, d| acc * 10 + ((d - b'0') as u32)))
+            }
+        }).parse(input)
     }
 }
