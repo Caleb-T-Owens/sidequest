@@ -204,3 +204,95 @@ impl Parser for IPv4AddressP {
             .parse(input)
     }
 }
+
+pub(crate) struct TopLabelP;
+impl Parser for TopLabelP {
+    type Out = Vec<u8>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        AlphaP
+            .map(|a| vec![a])
+            .or(AlphaP
+                .and(
+                    AlphanumP
+                        .or(CharParser::new(b'-'))
+                        .map(Either::unify)
+                        .span(),
+                )
+                .and(AlphanumP)
+                .map(|((a, b), c)| [a].into_iter().chain(b).chain([c]).collect()))
+            .map(Either::unify)
+            .parse(input)
+    }
+}
+
+pub(crate) struct DomainLabelP;
+impl Parser for DomainLabelP {
+    type Out = Vec<u8>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        AlphanumP
+            .map(|a| vec![a])
+            .or(AlphanumP
+                .and(
+                    AlphanumP
+                        .or(CharParser::new(b'-'))
+                        .map(Either::unify)
+                        .span(),
+                )
+                .and(AlphanumP)
+                .map(|((a, b), c)| [a].into_iter().chain(b).chain([c]).collect()))
+            .map(Either::unify)
+            .parse(input)
+    }
+}
+
+pub(crate) struct Hostname {
+    segments: Vec<Vec<u8>>,
+    trailing_dot: bool,
+}
+pub(crate) struct HostnameP;
+impl Parser for HostnameP {
+    type Out = Hostname;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        DomainLabelP
+            .and(CharParser::new(b'.'))
+            .map(|(a, _)| a)
+            .span()
+            .and(TopLabelP)
+            .and(CharParser::new(b'.').optional())
+            .map(|((a, b), c)| Hostname {
+                segments: a.into_iter().chain([b]).collect(),
+                trailing_dot: c.is_some(),
+            })
+            .parse(input)
+    }
+}
+
+pub(crate) enum Host {
+    Hostname(Hostname),
+    Ip(IPv4Address),
+}
+pub(crate) struct HostP;
+impl Parser for HostP {
+    type Out = Host;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        HostnameP
+            .or(IPv4AddressP)
+            .map(|a| match a {
+                Either::Left(a) => Host::Hostname(a),
+                Either::Right(b) => Host::Ip(b),
+            })
+            .parse(input)
+    }
+}
+
+pub(crate) struct HostPort(Host, Option<u32>);
+pub(crate) struct HostPortP;
+impl Parser for HostPortP {
+    type Out = HostPort;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        HostP
+            .and(CharParser::new(b':').then(|_| PortP).optional())
+            .map(|(hn, p)| HostPort(hn, p.flatten()))
+            .parse(input)
+    }
+}
