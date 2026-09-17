@@ -1,6 +1,6 @@
 use crate::either::Either;
 use crate::http::primatives::{AlphaP, DigitP, HexP, hex_chars_to_nibble};
-use crate::parser::{CharParser, MatchParser, ParseResult, Parser};
+use crate::parser::{CharParser, InsensitiveTermParser, MatchParser, ParseResult, Parser};
 
 pub(crate) struct EscapedP;
 impl Parser for EscapedP {
@@ -329,6 +329,53 @@ impl Parser for ServerP {
                 location,
             })
             .optional()
+            .parse(input)
+    }
+}
+
+pub(crate) struct RegNameP;
+impl Parser for RegNameP {
+    type Out = Vec<u8>;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        UnreservedP
+            .or(EscapedP)
+            .map(Either::unify)
+            .or(MatchParser::new(|u| b"$,;:@&=+".contains(&u)))
+            .map(Either::unify)
+            .bounded_span(1, usize::MAX)
+            .parse(input)
+    }
+}
+
+pub(crate) struct AuthorityP;
+impl Parser for AuthorityP {
+    type Out = Either<Option<Server>, Vec<u8>>;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        ServerP.or(RegNameP).parse(input)
+    }
+}
+
+pub(crate) enum Scheme {
+    Http,
+    Other(Vec<u8>),
+}
+pub(crate) struct SchemeP;
+impl Parser for SchemeP {
+    type Out = Scheme;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        InsensitiveTermParser::new("http")
+            .map(|_| Scheme::Http)
+            .or(AlphaP
+                .and(
+                    AlphanumP
+                        .or(MatchParser::new(|u| b"+-.".contains(&u)))
+                        .map(Either::unify)
+                        .span(),
+                )
+                .map(|(a, b)| Scheme::Other([a].into_iter().chain(b).collect())))
+            .map(Either::unify)
             .parse(input)
     }
 }
