@@ -140,23 +140,23 @@ impl Parser for OpaquePartP {
     }
 }
 
-pub(crate) struct AbsolutePath(pub Vec<Segment>);
-pub(crate) struct AbsolutePathP;
-impl Parser for AbsolutePathP {
-    type Out = AbsolutePath;
+pub(crate) struct AbsPath(pub Vec<Segment>);
+pub(crate) struct AbsPathP;
+impl Parser for AbsPathP {
+    type Out = AbsPath;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         CharParser::new(b'/')
             .then(|_| PathSegmentsP)
-            .map(AbsolutePath)
+            .map(AbsPath)
             .parse(input)
     }
 }
 
 pub(crate) struct PathP;
 impl Parser for PathP {
-    type Out = Either<AbsolutePath, Opaque>;
+    type Out = Either<AbsPath, Opaque>;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-        AbsolutePathP.or(OpaquePartP).parse(input)
+        AbsPathP.or(OpaquePartP).parse(input)
     }
 }
 
