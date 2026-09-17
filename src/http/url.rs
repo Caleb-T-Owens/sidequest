@@ -379,3 +379,19 @@ impl Parser for SchemeP {
             .parse(input)
     }
 }
+
+pub(crate) struct RelSegmentP;
+impl Parser for RelSegmentP {
+    type Out = Segment;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        UnreservedP
+            .or(EscapedP)
+            .map(Either::unify)
+            .or(MatchParser::new(|u| b";@&=+$,".contains(&u)))
+            .map(Either::unify)
+            .bounded_span(1, usize::MAX)
+            .map(|u| Segment(vec![u]))
+            .parse(input)
+    }
+}
