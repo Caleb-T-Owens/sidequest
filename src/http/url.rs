@@ -492,3 +492,20 @@ impl Parser for AbsoluteUriP {
             .parse(input)
     }
 }
+
+pub(crate) struct UriReference {
+    uri: Either<AbsoluteUri, RelativeUri>,
+    fragment: Option<Vec<u8>>,
+}
+pub(crate) struct UriReferenceP;
+impl Parser for UriReferenceP {
+    type Out = UriReference;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        AbsoluteUriP
+            .or(RelativeUriP)
+            .and(CharParser::new(b'#').then(|_| FragmentP).optional())
+            .map(|(uri, fragment)| UriReference { uri, fragment })
+            .parse(input)
+    }
+}
