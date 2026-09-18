@@ -434,6 +434,61 @@ impl Parser for NetPathP {
 pub(crate) enum UriPath {
     NetPath(NetPath),
     RelPath(RelPath),
-    AbsPath(AbsPath)
+    AbsPath(AbsPath),
 }
 
+pub(crate) struct RelativeUri {
+    path: UriPath,
+    query: Option<Vec<u8>>,
+}
+
+pub(crate) struct HierPartP;
+impl Parser for HierPartP {
+    type Out = RelativeUri;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        NetPathP
+            .map(UriPath::NetPath)
+            .or(AbsPathP.map(UriPath::AbsPath))
+            .map(Either::unify)
+            .and(CharParser::new(b'?').then(|_| QueryP).optional())
+            .map(|(path, query)| RelativeUri { path, query })
+            .parse(input)
+    }
+}
+
+pub(crate) struct RelativeUriP;
+impl Parser for RelativeUriP {
+    type Out = RelativeUri;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        NetPathP
+            .map(UriPath::NetPath)
+            .or(AbsPathP.map(UriPath::AbsPath))
+            .map(Either::unify)
+            .or(RelPathP.map(UriPath::RelPath))
+            .map(Either::unify)
+            .and(CharParser::new(b'?').then(|_| QueryP).optional())
+            .map(|(path, query)| RelativeUri { path, query })
+            .parse(input)
+    }
+}
+
+pub(crate) struct AbsoluteUri {
+    scheme: Scheme,
+    location: Either<RelativeUri, Opaque>,
+}
+
+pub(crate) struct AbsoluteUriP;
+impl Parser for AbsoluteUriP {
+    type Out = AbsoluteUri;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        SchemeP
+            .and(CharParser::new(b':'))
+            .map(|(a, _)| a)
+            .and(HierPartP.or(OpaquePartP))
+            .map(|(scheme, location)| AbsoluteUri { scheme, location })
+            .parse(input)
+    }
+}
