@@ -1,6 +1,8 @@
 use crate::either::Either;
 use crate::http::primatives::{AlphaP, DigitP, HexP, hex_chars_to_nibble};
-use crate::parser::{CharParser, InsensitiveTermParser, MatchParser, ParseResult, Parser};
+use crate::parser::{
+    CharParser, InsensitiveTermParser, MatchParser, ParseResult, Parser, TermParser,
+};
 
 pub(crate) struct EscapedP;
 impl Parser for EscapedP {
@@ -347,9 +349,10 @@ impl Parser for RegNameP {
     }
 }
 
+pub(crate) type Authority = Either<Option<Server>, Vec<u8>>;
 pub(crate) struct AuthorityP;
 impl Parser for AuthorityP {
-    type Out = Either<Option<Server>, Vec<u8>>;
+    type Out = Authority;
 
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         ServerP.or(RegNameP).parse(input)
@@ -395,3 +398,42 @@ impl Parser for RelSegmentP {
             .parse(input)
     }
 }
+
+pub(crate) struct RelPath(Vec<Segment>);
+pub(crate) struct RelPathP;
+impl Parser for RelPathP {
+    type Out = RelPath;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        RelSegmentP
+            .and(RelPathP)
+            .map(|(a, b)| RelPath([a].into_iter().chain(b.0).collect()))
+            .parse(input)
+    }
+}
+
+pub(crate) struct NetPath {
+    authority: Authority,
+    path: Option<AbsPath>,
+}
+pub(crate) struct NetPathP;
+impl Parser for NetPathP {
+    type Out = NetPath;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        TermParser::new(b"//")
+            .then(|_| {
+                AuthorityP
+                    .and(AbsPathP.optional())
+                    .map(|(authority, path)| NetPath { authority, path })
+            })
+            .parse(input)
+    }
+}
+
+pub(crate) enum UriPath {
+    NetPath(NetPath),
+    RelPath(RelPath),
+    AbsPath(AbsPath)
+}
+
