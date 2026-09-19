@@ -211,7 +211,13 @@ impl<A: Parser, B: Parser> Parser for AndParser<A, B> {
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         self.a
             .parse(input)
-            .then(|a, a_rest| self.b.parse(a_rest).map(|b| (a, b)))
+            .then(|a, a_rest| match self.b.parse(a_rest) {
+                ParseResult::Found { subject, rest } => ParseResult::Found {
+                    subject: (a, subject),
+                    rest,
+                },
+                ParseResult::Missed { .. } => ParseResult::Missed { rest: input },
+            })
     }
 }
 
