@@ -6,6 +6,7 @@ mod http;
 mod parser;
 
 use crate::http::HttpVersionP;
+use crate::http::url::{DomainLabelP, HostnameP, UriReferenceP};
 use crate::parser::Parser as _;
 
 #[allow(unused)]
@@ -41,7 +42,10 @@ fn tcp() -> std::io::Result<()> {
 fn main() -> std::io::Result<()> {
     // tcp()?;
 
-    dbg!(HttpVersionP.parse(b"HtTp/69.2"));
+    // dbg!(HttpVersionP.parse(b"HtTp/69.2"));
+    dbg!(UriReferenceP.parse(b"http://foobar.com?foo=bar"));
+    // dbg!(HostnameP.parse(b"foobar.com"));
+    // dbg!(DomainLabelP.parse(b"foobar"));
 
     Ok(())
 }

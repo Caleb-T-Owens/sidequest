@@ -1,5 +1,5 @@
 use crate::either::Either;
-use crate::http::primatives::{AlphaP, DigitP, HexP, hex_chars_to_nibble};
+use crate::http::primatives::{AlphaP, DigitP, HexP, hex_chars_to_nibble, is_alpha, is_digit};
 use crate::parser::{
     CharParser, InsensitiveTermParser, MatchParser, ParseResult, Parser, TermParser,
 };
@@ -23,11 +23,15 @@ impl Parser for MarkP {
     }
 }
 
+fn is_alphanum(u: u8) -> bool {
+    is_alpha(u) || is_digit(u)
+}
+
 pub(crate) struct AlphanumP;
 impl Parser for AlphanumP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-        AlphaP.or(DigitP).map(Either::unify).parse(input)
+        MatchParser::new(is_alphanum).parse(input)
     }
 }
 
@@ -110,6 +114,7 @@ impl Parser for ParamP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Segment(pub Vec<Vec<u8>>);
 pub(crate) struct SegmentP;
 impl Parser for SegmentP {
@@ -133,6 +138,7 @@ impl Parser for PathSegmentsP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Opaque;
 pub(crate) struct OpaquePartP;
 impl Parser for OpaquePartP {
@@ -142,6 +148,7 @@ impl Parser for OpaquePartP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct AbsPath(pub Vec<Segment>);
 pub(crate) struct AbsPathP;
 impl Parser for AbsPathP {
@@ -182,6 +189,7 @@ impl Parser for PortP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct IPv4Address(u8, u8, u8, u8);
 pub(crate) struct IPv4AddressP;
 impl Parser for IPv4AddressP {
@@ -212,16 +220,15 @@ impl Parser for TopLabelP {
     type Out = Vec<u8>;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         AlphaP
-            .map(|a| vec![a])
-            .or(AlphaP
-                .and(
-                    AlphanumP
-                        .or(CharParser::new(b'-'))
-                        .map(Either::unify)
-                        .span(),
-                )
-                .and(AlphanumP)
-                .map(|((a, b), c)| [a].into_iter().chain(b).chain([c]).collect()))
+            .and(
+                AlphanumP
+                    .or(CharParser::new(b'-'))
+                    .map(Either::unify)
+                    .bounded_span(1, usize::MAX)
+                    .select(|u| u.last().is_some_and(|u| is_alphanum(*u))),
+            )
+            .map(|(a, b)| [a].into_iter().chain(b).collect())
+            .or(AlphaP.map(|a| vec![a]))
             .map(Either::unify)
             .parse(input)
     }
@@ -232,21 +239,21 @@ impl Parser for DomainLabelP {
     type Out = Vec<u8>;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         AlphanumP
-            .map(|a| vec![a])
-            .or(AlphanumP
-                .and(
-                    AlphanumP
-                        .or(CharParser::new(b'-'))
-                        .map(Either::unify)
-                        .span(),
-                )
-                .and(AlphanumP)
-                .map(|((a, b), c)| [a].into_iter().chain(b).chain([c]).collect()))
+            .and(
+                AlphanumP
+                    .or(CharParser::new(b'-'))
+                    .map(Either::unify)
+                    .bounded_span(1, usize::MAX)
+                    .select(|u| u.last().is_some_and(|u| is_alphanum(*u))),
+            )
+            .map(|(a, b)| [a].into_iter().chain(b).collect())
+            .or(AlphanumP.map(|a| vec![a]))
             .map(Either::unify)
             .parse(input)
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Hostname {
     segments: Vec<Vec<u8>>,
     trailing_dot: bool,
@@ -269,6 +276,7 @@ impl Parser for HostnameP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum Host {
     Hostname(Hostname),
     Ip(IPv4Address),
@@ -287,6 +295,7 @@ impl Parser for HostP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct HostPort(Host, Option<u32>);
 pub(crate) struct HostPortP;
 impl Parser for HostPortP {
@@ -313,6 +322,7 @@ impl Parser for UserInfoP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Server {
     user_info: Option<Vec<u8>>,
     location: HostPort,
@@ -322,7 +332,9 @@ impl Parser for ServerP {
     type Out = Option<Server>;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         UserInfoP
-            .and(CharParser::new(b'@'))
+            .inspect()
+            .and(CharParser::new(b'@').inspect())
+            .inspect()
             .map(|(u, _)| u)
             .optional()
             .and(HostPortP)
@@ -359,6 +371,7 @@ impl Parser for AuthorityP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum Scheme {
     Http,
     Other(Vec<u8>),
@@ -399,6 +412,7 @@ impl Parser for RelSegmentP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct RelPath(Vec<Segment>);
 pub(crate) struct RelPathP;
 impl Parser for RelPathP {
@@ -412,6 +426,7 @@ impl Parser for RelPathP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct NetPath {
     authority: Authority,
     path: Option<AbsPath>,
@@ -431,12 +446,14 @@ impl Parser for NetPathP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum UriPath {
     NetPath(NetPath),
     RelPath(RelPath),
     AbsPath(AbsPath),
 }
 
+#[derive(Debug)]
 pub(crate) struct RelativeUri {
     path: UriPath,
     query: Option<Vec<u8>>,
@@ -474,6 +491,7 @@ impl Parser for RelativeUriP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct AbsoluteUri {
     scheme: Scheme,
     location: Either<RelativeUri, Opaque>,
@@ -493,6 +511,7 @@ impl Parser for AbsoluteUriP {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct UriReference {
     uri: Either<AbsoluteUri, RelativeUri>,
     fragment: Option<Vec<u8>>,

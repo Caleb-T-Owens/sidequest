@@ -9,27 +9,39 @@ impl Parser for CharP {
     }
 }
 
+pub(crate) fn is_up_alpha(u: u8) -> bool {
+    (b'A'..=b'Z').contains(&u)
+}
+
 pub(crate) struct UpAlphaP;
 impl Parser for UpAlphaP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-        RangeParser::new(b'A'..=b'Z').parse(input)
+        MatchParser::new(is_up_alpha).parse(input)
     }
+}
+
+pub(crate) fn is_lo_alpha(u: u8) -> bool {
+    (b'a'..=b'z').contains(&u)
 }
 
 pub(crate) struct LoAlphaP;
 impl Parser for LoAlphaP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-        RangeParser::new(b'a'..=b'z').parse(input)
+        MatchParser::new(is_lo_alpha).parse(input)
     }
+}
+
+pub(crate) fn is_alpha(u: u8) -> bool {
+    is_lo_alpha(u) || is_up_alpha(u)
 }
 
 pub(crate) struct AlphaP;
 impl Parser for AlphaP {
     type Out = u8;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-        UpAlphaP.or(LoAlphaP).map(Either::unify).parse(input)
+        MatchParser::new(is_alpha).parse(input)
     }
 }
 
