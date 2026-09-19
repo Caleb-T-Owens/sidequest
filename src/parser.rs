@@ -149,6 +149,14 @@ pub(crate) trait Parser {
             max,
         }
     }
+
+    fn select<F>(self: Self, op: F) -> SelectParser<Self, F>
+    where
+        F: FnOnce(&Self::Out) -> bool + Clone + Copy,
+        Self: Sized,
+    {
+        SelectParser { parser: self, op }
+    }
 }
 
 impl<P> Parser for Box<P>
@@ -197,6 +205,28 @@ impl<P: Parser> Parser for SpanParser<P> {
             }
         } else {
             ParseResult::Missed { rest: input }
+        }
+    }
+}
+
+pub(crate) struct SelectParser<P, F> {
+    parser: P,
+    op: F,
+}
+
+impl<P: Parser, F: FnOnce(&P::Out) -> bool + Clone + Copy> Parser for SelectParser<P, F> {
+    type Out = P::Out;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        match self.parser.parse(input) {
+            ParseResult::Found { subject, rest } => {
+                if (self.op)(&subject) {
+                    ParseResult::Found { subject, rest }
+                } else {
+                    ParseResult::Missed { rest: input }
+                }
+            }
+            ParseResult::Missed { rest } => ParseResult::Missed { rest },
         }
     }
 }
