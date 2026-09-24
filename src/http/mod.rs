@@ -4,6 +4,7 @@ use crate::http::primatives::DigitP;
 use crate::http::uri::{AbsPath, AbsPathP, Host, HostP, PortP, QueryP};
 use crate::parser::{CharParser, InsensitiveTermParser, ParseResult, Parser};
 
+pub(crate) mod date;
 mod primatives;
 pub(crate) mod uri;
 
@@ -56,7 +57,8 @@ impl Parser for HttpUrlP {
             .then(|_| HostP)
             .and(CharParser::new(b':').then(|_| PortP).optional())
             .and(
-                AbsPathP.inspect()
+                AbsPathP
+                    .inspect()
                     .and(CharParser::new(b'?').then(|_| QueryP.optional()))
                     .optional()
                     .map(|x| {
