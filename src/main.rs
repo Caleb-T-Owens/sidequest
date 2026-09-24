@@ -5,8 +5,7 @@ mod either;
 mod http;
 mod parser;
 
-use crate::http::HttpVersionP;
-use crate::http::url::{DomainLabelP, HostnameP, UriReferenceP};
+use crate::http::uri::UriReferenceP;
 use crate::parser::Parser as _;
 
 #[allow(unused)]
