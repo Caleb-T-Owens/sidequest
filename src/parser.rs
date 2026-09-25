@@ -263,6 +263,33 @@ impl<A: Parser, B: Parser> Parser for OrParser<A, B> {
     }
 }
 
+pub(crate) struct AnyParser<A> {
+    ps: A,
+}
+
+impl<A: Parser, const N: usize> AnyParser<[A; N]> {
+    pub(crate) fn new(ps: [A; N]) -> Self {
+        AnyParser { ps }
+    }
+}
+
+impl<A: Parser, const N: usize> Parser for AnyParser<[A; N]> {
+    type Out = A::Out;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        self.ps
+            .iter()
+            .find_map(|p| {
+                let result = p.parse(input);
+                if matches!(result, ParseResult::Found { .. }) {
+                    Some(result)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| ParseResult::Missed { rest: input })
+    }
+}
+
 pub(crate) struct MapParser<P, F> {
     parser: P,
     op: F,
