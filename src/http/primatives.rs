@@ -1,5 +1,5 @@
 use crate::either::Either;
-use crate::parser::{CharParser, MatchParser, ParseResult, Parser, RangeParser};
+use crate::parser::{CharParser, MatchParser, ParseResult, Parser};
 
 pub(crate) struct CharP;
 impl Parser for CharP {
