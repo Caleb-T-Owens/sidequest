@@ -10,7 +10,7 @@ pub(crate) enum ParseResult<'i, T> {
 }
 
 impl<'i, T> ParseResult<'i, T> {
-    fn map<U, F>(self, op: F) -> ParseResult<'i, U>
+    pub(crate) fn map<U, F>(self, op: F) -> ParseResult<'i, U>
     where
         F: FnOnce(T) -> U,
     {
@@ -23,7 +23,7 @@ impl<'i, T> ParseResult<'i, T> {
         }
     }
 
-    fn then<U, F>(self, op: F) -> ParseResult<'i, U>
+    pub(crate) fn then<U, F>(self, op: F) -> ParseResult<'i, U>
     where
         F: FnOnce(T, &'i [u8]) -> ParseResult<'i, U>,
     {
@@ -33,7 +33,7 @@ impl<'i, T> ParseResult<'i, T> {
         }
     }
 
-    fn or_else<U, F>(self, op: F) -> ParseResult<'i, Either<T, U>>
+    pub(crate) fn or_else<U, F>(self, op: F) -> ParseResult<'i, Either<T, U>>
     where
         F: FnOnce() -> ParseResult<'i, U>,
     {
@@ -46,7 +46,7 @@ impl<'i, T> ParseResult<'i, T> {
         }
     }
 
-    fn optional(self) -> ParseResult<'i, Option<T>> {
+    pub(crate) fn optional(self) -> ParseResult<'i, Option<T>> {
         match self {
             Self::Found { subject, rest } => ParseResult::Found {
                 subject: Some(subject),

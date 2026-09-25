@@ -1,4 +1,7 @@
-use crate::parser::{AnyParser, ParseResult, Parser, TermParser};
+use crate::{
+    http::U8P,
+    parser::{AnyParser, CharParser, ParseResult, Parser, TermParser},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum WeekDay {
@@ -32,6 +35,14 @@ pub(crate) struct Time {
     hour: u8,
     minute: u8,
     second: u8,
+}
+
+impl Time {
+    pub(crate) fn valid(&self) -> bool {
+        (0..=23).contains(&self.hour)
+            && (0..=59).contains(&self.minute)
+            && (0..=59).contains(&self.second)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,7 +89,6 @@ impl Parser for WeekDayP {
     type Out = WeekDay;
 
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-
         AnyParser::new([
             d(b"Monday", WeekDay::Monday),
             d(b"Tuesday", WeekDay::Tuesday),
@@ -107,5 +117,33 @@ impl Parser for WkDayP {
             d(b"Sun", WeekDay::Sunday),
         ])
         .parse(input)
+    }
+}
+
+pub(crate) struct TimeP;
+impl Parser for TimeP {
+    type Out = Time;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        let digit_2 = || U8P::Bounded(2, 2);
+        let sep = || CharParser::new(b':');
+        digit_2()
+            .and(sep())
+            .and(digit_2())
+            .and(sep())
+            .and(digit_2())
+            .map(|((((a, _), b), _), c)| Time {
+                hour: a,
+                minute: b,
+                second: c,
+            })
+            .parse(input)
+            .then(|subject, rest| {
+                if subject.valid() {
+                    ParseResult::Found { subject, rest }
+                } else {
+                    ParseResult::Missed { rest: input }
+                }
+            })
     }
 }
