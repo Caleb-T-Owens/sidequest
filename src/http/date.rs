@@ -68,3 +68,44 @@ impl Parser for MonthP {
         .parse(input)
     }
 }
+
+fn d(term: &[u8], d: WeekDay) -> impl Parser<Out = WeekDay> {
+    TermParser::new(term).map(move |_| d)
+}
+
+pub(crate) struct WeekDayP;
+impl Parser for WeekDayP {
+    type Out = WeekDay;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+
+        AnyParser::new([
+            d(b"Monday", WeekDay::Monday),
+            d(b"Tuesday", WeekDay::Tuesday),
+            d(b"Wednesday", WeekDay::Wednesday),
+            d(b"Thursday", WeekDay::Thursday),
+            d(b"Friday", WeekDay::Friday),
+            d(b"Saturday", WeekDay::Saturday),
+            d(b"Sunday", WeekDay::Sunday),
+        ])
+        .parse(input)
+    }
+}
+
+pub(crate) struct WkDayP;
+impl Parser for WkDayP {
+    type Out = WeekDay;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        AnyParser::new([
+            d(b"Mon", WeekDay::Monday),
+            d(b"Tue", WeekDay::Tuesday),
+            d(b"Wed", WeekDay::Wednesday),
+            d(b"Thu", WeekDay::Thursday),
+            d(b"Fri", WeekDay::Friday),
+            d(b"Sat", WeekDay::Saturday),
+            d(b"Sun", WeekDay::Sunday),
+        ])
+        .parse(input)
+    }
+}
