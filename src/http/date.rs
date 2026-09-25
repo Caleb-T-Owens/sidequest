@@ -1,6 +1,5 @@
 use crate::{
-    http::U8P,
-    parser::{AnyParser, CharParser, ParseResult, Parser, TermParser},
+    http::{U8P, U32P, primatives::SpP}, parser::{AnyParser, CharParser, ParseResult, Parser, TermParser},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -145,5 +144,48 @@ impl Parser for TimeP {
                     ParseResult::Missed { rest: input }
                 }
             })
+    }
+}
+
+pub(crate) struct Date3P;
+impl Parser for Date3P {
+    type Out = (u8, Month);
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        MonthP
+            .and(SpP)
+            .and(U8P::Bounded(2, 2).or(SpP.then(|_| U8P::Bounded(1, 1))))
+            .map(|((month, _), day)| (day.unify(), month))
+            .parse(input)
+    }
+}
+
+pub(crate) struct Date2P;
+impl Parser for Date2P {
+    type Out = (u8, Month, u32);
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        U8P::Bounded(2, 2)
+            .and(CharParser::new(b'-'))
+            .and(MonthP)
+            .and(CharParser::new(b'-'))
+            .and(U32P::Bounded(2, 2))
+            .map(|((((day, _), month), _), year)| (day, month, 1900 + year))
+            .parse(input)
+    }
+}
+
+pub(crate) struct Date1P;
+impl Parser for Date1P {
+    type Out = (u8, Month, u32);
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        U8P::Bounded(2, 2)
+            .and(SpP)
+            .and(MonthP)
+            .and(SpP)
+            .and(U32P::Bounded(4, 4))
+            .map(|((((day, _), month), _), year)| (day, month, year))
+            .parse(input)
     }
 }
