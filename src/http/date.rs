@@ -281,10 +281,10 @@ impl Parser for HttpDateP {
     type Out = DateTime;
 
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
-        AnyParser::new_boxed([
-            Box::new(Rfc1123P),
-            Box::new(Rfc850P),
-            Box::new(AsctimeP)
+        AnyParser::new_refs([
+            &Rfc1123P,
+            &Rfc850P,
+            &AsctimeP
         ]).parse(input)
     }
 }

@@ -169,6 +169,16 @@ where
     }
 }
 
+impl<P> Parser for &P
+where
+    P: Parser + ?Sized,
+{
+    type Out = P::Out;
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        (**self).parse(input)
+    }
+}
+
 pub(crate) struct SpanParser<P> {
     parser: P,
     min: usize,
@@ -275,6 +285,12 @@ impl<A: Parser, const N: usize> AnyParser<[A; N]> {
 
 impl<T, const N: usize> AnyParser<[Box<dyn Parser<Out = T>>; N]> {
     pub(crate) fn new_boxed(ps: [Box<dyn Parser<Out = T>>; N]) -> Self {
+        AnyParser { ps }
+    }
+}
+
+impl<'a, T, const N: usize> AnyParser<[&'a dyn Parser<Out = T>; N]> {
+    pub(crate) fn new_refs(ps: [&'a dyn Parser<Out = T>; N]) -> Self {
         AnyParser { ps }
     }
 }
