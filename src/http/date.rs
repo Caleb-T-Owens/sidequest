@@ -275,3 +275,16 @@ impl Parser for Rfc1123P {
             .parse(input)
     }
 }
+
+pub(crate) struct HttpDateP;
+impl Parser for HttpDateP {
+    type Out = DateTime;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        AnyParser::new_boxed([
+            Box::new(Rfc1123P),
+            Box::new(Rfc850P),
+            Box::new(AsctimeP)
+        ]).parse(input)
+    }
+}

@@ -273,6 +273,12 @@ impl<A: Parser, const N: usize> AnyParser<[A; N]> {
     }
 }
 
+impl<T, const N: usize> AnyParser<[Box<dyn Parser<Out = T>>; N]> {
+    pub(crate) fn new_boxed(ps: [Box<dyn Parser<Out = T>>; N]) -> Self {
+        AnyParser { ps }
+    }
+}
+
 impl<A: Parser, const N: usize> Parser for AnyParser<[A; N]> {
     type Out = A::Out;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
