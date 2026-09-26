@@ -1,5 +1,6 @@
 use crate::{
-    http::{U8P, U32P, primatives::SpP}, parser::{AnyParser, CharParser, ParseResult, Parser, TermParser},
+    http::{U8P, U32P, primatives::SpP},
+    parser::{AnyParser, CharParser, ParseResult, Parser, TermParser},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,10 +47,16 @@ impl Time {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Date {
-    year: u16,
+    year: u32,
     month: Month,
     week_day: WeekDay,
     day: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct DateTime {
+    date: Date,
+    time: Time,
 }
 
 pub(crate) struct MonthP;
@@ -186,6 +193,85 @@ impl Parser for Date1P {
             .and(SpP)
             .and(U32P::Bounded(4, 4))
             .map(|((((day, _), month), _), year)| (day, month, year))
+            .parse(input)
+    }
+}
+
+pub(crate) struct AsctimeP;
+impl Parser for AsctimeP {
+    type Out = DateTime;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        WkDayP
+            .and(SpP)
+            .and(Date3P)
+            .and(SpP)
+            .and(TimeP)
+            .and(SpP)
+            .and(U32P::Bounded(4, 4))
+            .map(
+                |((((((week_day, _), (day, month)), _), time), _), year)| DateTime {
+                    date: Date {
+                        week_day,
+                        day,
+                        month,
+                        year,
+                    },
+                    time,
+                },
+            )
+            .parse(input)
+    }
+}
+
+pub(crate) struct Rfc850P;
+impl Parser for Rfc850P {
+    type Out = DateTime;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        WeekDayP
+            .and(CharParser::new(b',').and(SpP))
+            .and(Date2P)
+            .and(SpP)
+            .and(TimeP)
+            .and(SpP.and(TermParser::new(b"GMT")))
+            .map(
+                |(((((week_day, _), (day, month, year)), _), time), _)| DateTime {
+                    date: Date {
+                        week_day,
+                        day,
+                        month,
+                        year,
+                    },
+                    time,
+                },
+            )
+            .parse(input)
+    }
+}
+
+pub(crate) struct Rfc1123P;
+impl Parser for Rfc1123P {
+    type Out = DateTime;
+
+    fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
+        WkDayP
+            .and(CharParser::new(b',').and(SpP))
+            .and(Date1P)
+            .and(SpP)
+            .and(TimeP)
+            .and(SpP.and(TermParser::new(b"GMT")))
+            .map(
+                |(((((week_day, _), (day, month, year)), _), time), _)| DateTime {
+                    date: Date {
+                        week_day,
+                        day,
+                        month,
+                        year,
+                    },
+                    time,
+                },
+            )
             .parse(input)
     }
 }
