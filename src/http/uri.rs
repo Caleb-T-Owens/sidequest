@@ -1,5 +1,5 @@
 use crate::either::Either;
-use crate::http::U8P;
+use crate::http::{U32P, U8P};
 use crate::http::primatives::{AlphaP, HexP, hex_chars_to_nibble, is_alpha, is_digit};
 use crate::parser::{
     CharParser, InsensitiveTermParser, MatchParser, ParseResult, Parser, TermParser,
