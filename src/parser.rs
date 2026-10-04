@@ -12,7 +12,7 @@ pub(crate) enum ParseResult<'i, T> {
 impl<'i, T> ParseResult<'i, T> {
     pub(crate) fn map<U, F>(self, op: F) -> ParseResult<'i, U>
     where
-        F: FnOnce(T) -> U,
+        F: Fn(T) -> U,
     {
         match self {
             Self::Found { subject, rest } => ParseResult::Found {
@@ -25,7 +25,7 @@ impl<'i, T> ParseResult<'i, T> {
 
     pub(crate) fn then<U, F>(self, op: F) -> ParseResult<'i, U>
     where
-        F: FnOnce(T, &'i [u8]) -> ParseResult<'i, U>,
+        F: Fn(T, &'i [u8]) -> ParseResult<'i, U>,
     {
         match self {
             Self::Found { subject, rest } => op(subject, rest),
@@ -35,7 +35,7 @@ impl<'i, T> ParseResult<'i, T> {
 
     pub(crate) fn or_else<U, F>(self, op: F) -> ParseResult<'i, Either<T, U>>
     where
-        F: FnOnce() -> ParseResult<'i, U>,
+        F: Fn() -> ParseResult<'i, U>,
     {
         match self {
             Self::Found { subject, rest } => ParseResult::Found {
@@ -97,7 +97,7 @@ pub(crate) trait Parser {
 
     fn map<U, F>(self: Self, op: F) -> MapParser<Self, F>
     where
-        F: FnOnce(Self::Out) -> U + Clone + Copy,
+        F: Fn(Self::Out) -> U + Clone + Copy,
         Self: Sized,
     {
         MapParser { parser: self, op }
@@ -105,7 +105,7 @@ pub(crate) trait Parser {
 
     fn then<P: Parser, F>(self: Self, op: F) -> ThenParser<Self, F>
     where
-        F: FnOnce(Self::Out) -> P + Clone + Copy,
+        F: Fn(Self::Out) -> P,
         Self: Sized,
     {
         ThenParser { parser: self, op }
@@ -152,7 +152,7 @@ pub(crate) trait Parser {
 
     fn select<F>(self: Self, op: F) -> SelectParser<Self, F>
     where
-        F: FnOnce(&Self::Out) -> bool + Clone + Copy,
+        F: Fn(&Self::Out) -> bool,
         Self: Sized,
     {
         SelectParser { parser: self, op }
@@ -224,7 +224,7 @@ pub(crate) struct SelectParser<P, F> {
     op: F,
 }
 
-impl<P: Parser, F: FnOnce(&P::Out) -> bool + Clone + Copy> Parser for SelectParser<P, F> {
+impl<P: Parser, F: Fn(&P::Out) -> bool> Parser for SelectParser<P, F> {
     type Out = P::Out;
 
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
@@ -317,7 +317,7 @@ pub(crate) struct MapParser<P, F> {
     op: F,
 }
 
-impl<P: Parser, U, F: FnOnce(P::Out) -> U + Clone + Copy> Parser for MapParser<P, F> {
+impl<P: Parser, U, F: Fn(P::Out) -> U> Parser for MapParser<P, F> {
     type Out = U;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, U> {
         self.parser.parse(input).map(self.op)
@@ -329,7 +329,7 @@ pub(crate) struct ThenParser<P, F> {
     op: F,
 }
 
-impl<P: Parser, U: Parser, F: FnOnce(P::Out) -> U + Clone + Copy> Parser for ThenParser<P, F> {
+impl<P: Parser, U: Parser, F: Fn(P::Out) -> U> Parser for ThenParser<P, F> {
     type Out = U::Out;
     fn parse<'i>(&self, input: &'i [u8]) -> ParseResult<'i, Self::Out> {
         self.parser
